@@ -11,7 +11,7 @@ use entropy_beacon_cosmos::{
     msg::{ExecuteMsg, QueryMsg},
     provide::{
         ActiveRequestsResponse, KeyStatusQuery, KeyStatusResponse, LastEntropyResponse,
-        SubmitEntropyMsg, WhitelistPublicKeyMsg, ReclaimDepositMsg,
+        ReclaimDepositMsg, SubmitEntropyMsg, WhitelistPublicKeyMsg,
     },
     EntropyCallbackMsg,
 };
@@ -195,6 +195,11 @@ fn submit_entropy(
 
     let key = &proof.signer;
     check_key(&deps.as_ref(), &env, key, &cfg)?;
+
+    let key_info = WHITELISTED_KEYS.load(deps.storage, key.as_bytes())?;
+    if key_info.holder != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
 
     let entropy = proof.verify().map_err(|_| ContractError::InvalidProof {})?;
 
