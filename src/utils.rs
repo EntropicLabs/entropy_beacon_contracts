@@ -22,7 +22,7 @@ pub fn check_key(
 ) -> Result<u64, ContractError> {
     let created_time = WHITELISTED_KEYS
         .load(deps.storage, key.as_bytes())
-        .map_err(|_| ContractError::KeyNotWhitelisted {})?;
+        .map_err(|_| ContractError::KeyNotWhitelisted {})?.creation_height;
     if created_time + cfg.key_activation_delay <= env.block.height {
         Ok(created_time + cfg.key_activation_delay)
     } else {

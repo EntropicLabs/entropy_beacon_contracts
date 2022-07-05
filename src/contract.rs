@@ -11,17 +11,20 @@ use entropy_beacon_cosmos::{
     msg::{ExecuteMsg, QueryMsg},
     provide::{
         ActiveRequestsResponse, KeyStatusQuery, KeyStatusResponse, LastEntropyResponse,
-        SubmitEntropyMsg, WhitelistPublicKeyMsg,
+        SubmitEntropyMsg, WhitelistPublicKeyMsg, ReclaimDepositMsg,
     },
     EntropyCallbackMsg,
 };
 
-use crate::msg::{InstantiateMsg, SUBMSG_REPLY_ID};
 use crate::state::{
     Config, EntropyRequest, State, ACTIVE_REQUESTS, CONFIG, STATE, WHITELISTED_KEYS,
 };
 use crate::utils::{check_key, is_whitelisted};
 use crate::{error::ContractError, msg::MigrateMsg};
+use crate::{
+    msg::{InstantiateMsg, SUBMSG_REPLY_ID},
+    state::KeyInfo,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:entropy";
@@ -68,6 +71,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateConfig(data) => update_config(deps, env, info, data),
         ExecuteMsg::WhitelistPublicKey(data) => whitelist_key(deps, env, info, data),
+        ExecuteMsg::ReclaimDeposit(data) => reclaim_deposit(deps, env, info, data),
         ExecuteMsg::SubmitEntropy(data) => submit_entropy(deps, env, info, data),
         ExecuteMsg::RequestEntropy(data) => request_entropy(deps, env, info, data),
     }
@@ -116,11 +120,19 @@ fn whitelist_key(
     }
 
     let received_funds_amt: Uint128 = info.funds.iter().map(|c| c.amount).sum();
-    if received_funds_amt < Uint128::from(cfg.deposit_fee) {
+    if received_funds_amt < cfg.deposit_fee {
         return Err(ContractError::InsufficientFunds {});
     }
 
-    WHITELISTED_KEYS.save(deps.storage, key.as_bytes(), &env.block.height)?;
+    WHITELISTED_KEYS.save(
+        deps.storage,
+        key.as_bytes(),
+        &KeyInfo {
+            creation_height: env.block.height,
+            deposit_amount: cfg.deposit_fee,
+            holder: info.sender,
+        },
+    )?;
     Ok(Response::new()
         .add_attribute("action", "whitelist_public_key")
         .add_attribute("public_key", format!("{}", data.public_key))
@@ -128,6 +140,33 @@ fn whitelist_key(
             "activation_height",
             format!("{}", env.block.height + cfg.key_activation_delay),
         ))
+}
+
+fn reclaim_deposit(
+    deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    data: ReclaimDepositMsg,
+) -> Result<Response, ContractError> {
+    let key = data.public_key;
+
+    if !is_whitelisted(&deps.as_ref(), &key) {
+        return Err(ContractError::KeyNotWhitelisted {});
+    }
+    let key_info = WHITELISTED_KEYS.load(deps.storage, key.as_bytes())?;
+    WHITELISTED_KEYS.remove(deps.storage, key.as_bytes());
+
+    Ok(Response::new()
+        .add_message(CosmosMsg::Bank(BankMsg::Send {
+            to_address: key_info.holder.to_string(),
+            amount: vec![Coin {
+                denom: "uluna".to_string(),
+                amount: key_info.deposit_amount,
+            }],
+        }))
+        .add_attribute("action", "reclaim_deposit")
+        .add_attribute("unwhitelisted_key", format!("{}", key))
+        .add_attribute("refund", format!("{}", key_info.deposit_amount)))
 }
 
 /// Allows a public key holder to submit entropy through the VRF proof.

@@ -13,7 +13,7 @@ pub struct State {
 pub struct Config {
     pub owner: Addr,
     ///The amount of tokens that must be deposited to whitelist a new public key.
-    pub deposit_fee: u64,
+    pub deposit_fee: Uint128,
     ///The time, in blocks, before a whitelisted public key can be used to submit entropy.
     pub key_activation_delay: u64,
     ///The fee that the protocol contract charges on top of the requested gas fees.
@@ -40,7 +40,15 @@ pub struct EntropyRequest {
     pub submitted_bounty_amount: Uint128,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct KeyInfo {
+    pub holder: Addr,
+    pub deposit_amount: Uint128,
+    pub creation_height: u64,
+}
+
 pub const STATE: Item<State> = Item::new("state");
 pub const CONFIG: Item<Config> = Item::new("config");
-pub const WHITELISTED_KEYS: Map<&[u8], u64> = Map::new("whitelisted_keys");
+pub const WHITELISTED_KEYS: Map<&[u8], KeyInfo> = Map::new("whitelisted_keys");
 pub const ACTIVE_REQUESTS: Item<Vec<EntropyRequest>> = Item::new("active_requests");
