@@ -10,8 +10,8 @@ use entropy_beacon_cosmos::{
     beacon::{RequestEntropyMsg, UpdateConfigMsg},
     msg::{ExecuteMsg, QueryMsg},
     provide::{
-        ActiveRequestsResponse, KeyStatusQuery, KeyStatusResponse, LastEntropyResponse,
-        ReclaimDepositMsg, SubmitEntropyMsg, WhitelistPublicKeyMsg,
+        ActiveRequestsResponse, BeaconConfigResponse, KeyStatusQuery, KeyStatusResponse,
+        LastEntropyResponse, ReclaimDepositMsg, SubmitEntropyMsg, WhitelistPublicKeyMsg,
     },
     EntropyCallbackMsg,
 };
@@ -42,10 +42,11 @@ pub fn instantiate(
     let state = State { last_entropy: None };
     let cfg = Config {
         owner: info.sender.clone(),
-        deposit_fee: msg.deposit_fee,
+        whitelist_deposit_amt: msg.whitelist_deposit_amt,
         key_activation_delay: msg.key_activation_delay,
         protocol_fee: msg.protocol_fee,
         submitter_share: Decimal::percent(msg.submitter_share),
+        native_denom: msg.native_denom,
     };
     STATE.save(deps.storage, &state)?;
     CONFIG.save(deps.storage, &cfg)?;
@@ -54,11 +55,7 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
-        .add_attribute("owner", info.sender)
-        .add_attribute(
-            "key_activation_delay",
-            format!("{}", msg.key_activation_delay),
-        ))
+        .add_attribute("owner", info.sender))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -79,7 +76,7 @@ pub fn execute(
 
 /// Update the configuration of the contract
 /// This is only allowed to be called by the owner
-fn update_config(
+pub fn update_config(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -90,7 +87,7 @@ fn update_config(
         return Err(ContractError::Unauthorized {});
     }
 
-    cfg.deposit_fee = data.deposit_fee;
+    cfg.whitelist_deposit_amt = data.whitelist_deposit_amt;
     cfg.key_activation_delay = data.key_activation_delay;
     cfg.protocol_fee = data.protocol_fee;
     cfg.submitter_share = Decimal::percent(data.submitter_share);
@@ -103,7 +100,7 @@ fn update_config(
 /// Whitelists a public key, noting down the block height.
 /// A public key can only submit entropy after a "key activation delay"
 /// period has passed. See `crate::state::Config::key_activation_delay`.
-fn whitelist_key(
+pub fn whitelist_key(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -119,8 +116,18 @@ fn whitelist_key(
         return Err(ContractError::KeyAlreadyWhitelisted {});
     }
 
-    let received_funds_amt: Uint128 = info.funds.iter().map(|c| c.amount).sum();
-    if received_funds_amt < cfg.deposit_fee {
+    let received_funds_amt: Uint128 = info
+        .funds
+        .iter()
+        .filter_map(|coin| {
+            if coin.denom == cfg.native_denom {
+                Some(coin.amount)
+            } else {
+                None
+            }
+        })
+        .sum();
+    if received_funds_amt < cfg.whitelist_deposit_amt {
         return Err(ContractError::InsufficientFunds {});
     }
 
@@ -129,7 +136,7 @@ fn whitelist_key(
         key.as_bytes(),
         &KeyInfo {
             creation_height: env.block.height,
-            deposit_amount: cfg.deposit_fee,
+            deposit_amount: cfg.whitelist_deposit_amt,
             holder: info.sender,
         },
     )?;
@@ -142,10 +149,10 @@ fn whitelist_key(
         ))
 }
 
-fn reclaim_deposit(
+pub fn reclaim_deposit(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     data: ReclaimDepositMsg,
 ) -> Result<Response, ContractError> {
     let key = data.public_key;
@@ -154,6 +161,11 @@ fn reclaim_deposit(
         return Err(ContractError::KeyNotWhitelisted {});
     }
     let key_info = WHITELISTED_KEYS.load(deps.storage, key.as_bytes())?;
+
+    if info.sender != key_info.holder {
+        return Err(ContractError::Unauthorized {});
+    }
+
     WHITELISTED_KEYS.remove(deps.storage, key.as_bytes());
 
     Ok(Response::new()
@@ -178,7 +190,7 @@ fn reclaim_deposit(
 /// a minimum of `key_activation_delay` blocks, to prevent attacks.
 /// Also ensures that the message/seed used for the VRF proof is the
 /// entropy that was last submitted.
-fn submit_entropy(
+pub fn submit_entropy(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -243,7 +255,7 @@ fn submit_entropy(
 /// Allows any smart contract to request entropy from the beacon.
 /// Ensures that the caller has provided enough funds to pay both
 /// the requested callback gas and the protocol fee.
-fn request_entropy(
+pub fn request_entropy(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -297,12 +309,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::KeyStatus(data) => to_binary(&key_status_query(deps, env, data)?),
         QueryMsg::LastEntropy(_) => to_binary(&last_entropy_query(deps)?),
         QueryMsg::ActiveRequests(_) => to_binary(&active_requests_query(deps)?),
+        QueryMsg::BeaconConfig(_) => to_binary(&beacon_config_query(deps)?),
     }
 }
 
 /// Checks whether a key is whitelisted, and if so, whether enough blocks
 /// have passed for the key to be used to submit entropy.
-fn key_status_query(deps: Deps, env: Env, data: KeyStatusQuery) -> StdResult<KeyStatusResponse> {
+pub fn key_status_query(deps: Deps, env: Env, data: KeyStatusQuery) -> StdResult<KeyStatusResponse> {
     let cfg = CONFIG.load(deps.storage)?;
     let key = data.public_key;
 
@@ -336,7 +349,7 @@ fn key_status_query(deps: Deps, env: Env, data: KeyStatusQuery) -> StdResult<Key
 }
 
 /// Returns the last submitted entropy, as a hex string.
-fn last_entropy_query(deps: Deps) -> StdResult<LastEntropyResponse> {
+pub fn last_entropy_query(deps: Deps) -> StdResult<LastEntropyResponse> {
     let cfg = STATE.load(deps.storage)?;
     let last = cfg.last_entropy.unwrap_or_default();
     Ok(LastEntropyResponse {
@@ -344,13 +357,23 @@ fn last_entropy_query(deps: Deps) -> StdResult<LastEntropyResponse> {
     })
 }
 
-fn active_requests_query(deps: Deps) -> StdResult<ActiveRequestsResponse> {
+pub fn active_requests_query(deps: Deps) -> StdResult<ActiveRequestsResponse> {
     let requests = ACTIVE_REQUESTS.load(deps.storage)?;
     Ok(ActiveRequestsResponse {
         bounties: requests
             .iter()
             .map(|req| req.submitted_bounty_amount)
             .collect(),
+    })
+}
+
+pub fn beacon_config_query(deps: Deps) -> StdResult<BeaconConfigResponse> {
+    let cfg = CONFIG.load(deps.storage)?;
+    Ok(BeaconConfigResponse {
+        whitelist_deposit_amt: cfg.whitelist_deposit_amt,
+        key_activation_delay: cfg.key_activation_delay,
+        protocol_fee: cfg.protocol_fee,
+        submitter_share: cfg.submitter_share,
     })
 }
 

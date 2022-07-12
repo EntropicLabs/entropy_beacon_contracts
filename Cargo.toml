@@ -52,3 +52,4 @@ ecvrf = { path = "../../packages/ecvrf-rs" }
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"
 cw-multi-test = "0.13.2"
+hex = "0.4.3"

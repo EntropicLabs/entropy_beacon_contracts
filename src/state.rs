@@ -13,13 +13,15 @@ pub struct State {
 pub struct Config {
     pub owner: Addr,
     ///The amount of tokens that must be deposited to whitelist a new public key.
-    pub deposit_fee: Uint128,
+    pub whitelist_deposit_amt: Uint128,
     ///The time, in blocks, before a whitelisted public key can be used to submit entropy.
     pub key_activation_delay: u64,
     ///The fee that the protocol contract charges on top of the requested gas fees.
     pub protocol_fee: u64,
     ///The share of the protocol fee that is distributed to the wallet submitting entropy.
     pub submitter_share: Decimal,
+    ///The native currency of the target chain.
+    pub native_denom: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

@@ -38,6 +38,7 @@ dependencies = [
  "cw2",
  "ecvrf",
  "entropy_beacon_cosmos",
+ "hex",
  "schemars",
  "serde",
  "thiserror",
