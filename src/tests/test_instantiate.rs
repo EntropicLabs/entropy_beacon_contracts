@@ -1,14 +1,7 @@
-use cosmwasm_std::{
-    from_binary,
-    testing::{mock_dependencies, mock_env},
-    Attribute, Decimal, Uint128,
-};
-use entropy_beacon_cosmos::{
-    msg::QueryMsg,
-    provide::{BeaconConfigQuery, BeaconConfigResponse},
-};
+use cosmwasm_std::{testing::mock_dependencies, Attribute, Decimal, Uint128};
+use entropy_beacon_cosmos::provide::BeaconConfigResponse;
 
-use crate::{contract::query, tests::default_instantiate};
+use crate::{contract::beacon_config_query, tests::default_instantiate};
 #[test]
 fn instantiates_correctly() {
     let mut deps = mock_dependencies();
@@ -29,9 +22,7 @@ fn instantiates_correctly() {
         res.attributes.get(1).unwrap()
     );
 
-    let config_query_msg = QueryMsg::BeaconConfig(BeaconConfigQuery {});
-    let res = query(deps.as_ref(), mock_env(), config_query_msg).unwrap();
-    let res = from_binary::<BeaconConfigResponse>(&res).unwrap();
+    let res = beacon_config_query(deps.as_ref()).unwrap();
     assert_eq!(
         res,
         BeaconConfigResponse {

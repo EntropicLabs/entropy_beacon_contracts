@@ -2,7 +2,7 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info},
     DepsMut, Response, Uint128,
 };
-use ecvrf::PublicKey;
+use ecvrf::{PublicKey, SecretKey};
 
 use crate::{contract::instantiate, msg::InstantiateMsg};
 
@@ -16,6 +16,13 @@ pub fn test_pk() -> PublicKey {
     let pk =
         hex::decode("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a").unwrap();
     PublicKey::from_bytes(pk.as_slice())
+}
+
+pub fn test_sk() -> SecretKey {
+    let sk =
+    hex::decode("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60")
+        .unwrap();
+    SecretKey::from_slice(sk.as_slice())
 }
 
 pub fn default_instantiate(deps: DepsMut) -> Response {

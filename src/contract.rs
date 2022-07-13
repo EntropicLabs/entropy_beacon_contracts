@@ -149,6 +149,8 @@ pub fn whitelist_key(
         ))
 }
 
+/// Allows the holder of a public key to unwhitelist it, and reclaim the
+/// deposit that was made when the key was whitelisted.
 pub fn reclaim_deposit(
     deps: DepsMut,
     _env: Env,
@@ -199,10 +201,8 @@ pub fn submit_entropy(
     let mut state = STATE.load(deps.storage)?;
     let cfg = CONFIG.load(deps.storage)?;
     let proof = data.proof;
-    if let Some(last) = state.last_entropy {
-        if last != proof.message_bytes {
-            return Err(ContractError::InvalidMessage {});
-        }
+    if state.last_entropy.unwrap_or_default() != proof.message_bytes {
+        return Err(ContractError::InvalidMessage {});
     }
 
     let key = &proof.signer;
@@ -315,7 +315,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 /// Checks whether a key is whitelisted, and if so, whether enough blocks
 /// have passed for the key to be used to submit entropy.
-pub fn key_status_query(deps: Deps, env: Env, data: KeyStatusQuery) -> StdResult<KeyStatusResponse> {
+pub fn key_status_query(
+    deps: Deps,
+    env: Env,
+    data: KeyStatusQuery,
+) -> StdResult<KeyStatusResponse> {
     let cfg = CONFIG.load(deps.storage)?;
     let key = data.public_key;
 

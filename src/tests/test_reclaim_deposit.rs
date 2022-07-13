@@ -4,13 +4,10 @@ use cosmwasm_std::{
     BankMsg, CosmosMsg, Empty, Env, OwnedDeps,
 };
 use ecvrf::PublicKey;
-use entropy_beacon_cosmos::{
-    msg::{ExecuteMsg},
-    provide::{KeyStatusQuery, ReclaimDepositMsg, WhitelistPublicKeyMsg},
-};
+use entropy_beacon_cosmos::provide::{KeyStatusQuery, ReclaimDepositMsg, WhitelistPublicKeyMsg};
 
 use crate::{
-    contract::{execute, key_status_query},
+    contract::{key_status_query, reclaim_deposit, whitelist_key},
     state::WHITELISTED_KEYS,
     ContractError,
 };
@@ -25,14 +22,7 @@ fn setup_contract(deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier, Empty>
     let msg = WhitelistPublicKeyMsg {
         public_key: test_pk(),
     };
-
-    execute(
-        deps.as_mut(),
-        env,
-        info,
-        ExecuteMsg::WhitelistPublicKey(msg),
-    )
-    .unwrap();
+    whitelist_key(deps.as_mut(), env, info, msg).unwrap();
 }
 
 #[test]
@@ -46,12 +36,8 @@ fn unwhitelists_key() {
         public_key: test_pk(),
     };
 
-    let res = execute(
-        deps.as_mut(),
-        env.clone(),
-        info,
-        ExecuteMsg::ReclaimDeposit(msg),
-    );
+    let res = reclaim_deposit(deps.as_mut(), env.clone(), info, msg);
+
     assert!(res.is_ok());
 
     assert!(WHITELISTED_KEYS
@@ -81,7 +67,7 @@ fn returns_deposit() {
         public_key: test_pk(),
     };
 
-    let res = execute(deps.as_mut(), env, info, ExecuteMsg::ReclaimDeposit(msg));
+    let res = reclaim_deposit(deps.as_mut(), env, info, msg);
     assert!(res.is_ok());
     let res = res.unwrap();
 
@@ -113,7 +99,7 @@ fn rejects_unwhitelisted_keys() {
         public_key: PublicKey::from_bytes(&[0u8; 32]),
     };
 
-    let res = execute(deps.as_mut(), env, info, ExecuteMsg::ReclaimDeposit(msg));
+    let res = reclaim_deposit(deps.as_mut(), env, info, msg);
     assert_eq!(res.unwrap_err(), ContractError::KeyNotWhitelisted {});
 }
 
@@ -128,6 +114,6 @@ fn rejects_unauthorized_claimers() {
         public_key: test_pk(),
     };
 
-    let res = execute(deps.as_mut(), env, info, ExecuteMsg::ReclaimDeposit(msg));
+    let res = reclaim_deposit(deps.as_mut(), env, info, msg);
     assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
 }
