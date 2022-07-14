@@ -17,7 +17,7 @@ use super::{default_instantiate, test_pk, test_sk};
 fn setup_contract(deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier, Empty>, env: &mut Env) {
     default_instantiate(deps.as_mut());
 
-    let info = mock_info("executor", &[coin(1000, "uluna")]);
+    let info = mock_info("submitter", &[coin(1000, "uluna")]);
 
     let msg = WhitelistPublicKeyMsg {
         public_key: test_pk(),
@@ -32,7 +32,7 @@ fn submits_correctly() {
     let mut env = mock_env();
     setup_contract(&mut deps, &mut env);
 
-    let info = mock_info("executor", &[]);
+    let info = mock_info("submitter", &[]);
     let last_entropy = "".to_string();
     let proof = Proof::new(&test_sk(), last_entropy).unwrap();
 
@@ -52,7 +52,7 @@ fn rejects_wrong_message() {
     let mut env = mock_env();
     setup_contract(&mut deps, &mut env);
 
-    let info = mock_info("executor", &[]);
+    let info = mock_info("submitter", &[]);
     let fake_last_entropy = "NOT LAST ENTROPY".to_string();
     let proof = Proof::new(&test_sk(), fake_last_entropy).unwrap();
 
@@ -68,7 +68,7 @@ fn rejects_inactive_keys() {
     setup_contract(&mut deps, &mut env);
     env.block.height -= 1;
 
-    let info = mock_info("executor", &[]);
+    let info = mock_info("submitter", &[]);
     let last_entropy = "".to_string();
     let proof = Proof::new(&test_sk(), last_entropy).unwrap();
 
@@ -88,7 +88,7 @@ fn rejects_invalid_keys() {
     let mut env = mock_env();
     setup_contract(&mut deps, &mut env);
 
-    let info = mock_info("executor", &[]);
+    let info = mock_info("submitter", &[]);
     let last_entropy = "".to_string();
     let sk = SecretKey::from_slice(&[0; 32]);
     let proof = Proof::new(&sk, last_entropy).unwrap();
@@ -119,7 +119,7 @@ fn rejects_invalid_proofs() {
     let mut env = mock_env();
     setup_contract(&mut deps, &mut env);
 
-    let info = mock_info("executor", &[]);
+    let info = mock_info("submitter", &[]);
     let last_entropy = "".to_string();
     let proof = Proof{
         signer: test_pk(),

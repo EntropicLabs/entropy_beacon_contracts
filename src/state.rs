@@ -1,3 +1,4 @@
+use entropy_beacon_cosmos::provide::ActiveRequestInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -40,6 +41,18 @@ pub struct EntropyRequest {
     pub submitted_block_height: u64,
     ///The amount of tokens left after subtracting the requested gas.
     pub submitted_bounty_amount: Uint128,
+}
+
+impl EntropyRequest {
+    pub fn into_info(self) -> ActiveRequestInfo {
+        ActiveRequestInfo {
+            callback_gas_limit: self.callback_gas_limit,
+            callback_address: self.callback_address,
+            submitter: self.submitter,
+            submitted_block_height: self.submitted_block_height,
+            submitted_bounty_amount: self.submitted_bounty_amount,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

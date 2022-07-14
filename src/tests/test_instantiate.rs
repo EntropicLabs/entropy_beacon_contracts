@@ -27,7 +27,7 @@ fn instantiates_correctly() {
         res,
         BeaconConfigResponse {
             whitelist_deposit_amt: Uint128::from(1000u128),
-            protocol_fee: 2,
+            protocol_fee: 100,
             submitter_share: Decimal::percent(80),
             key_activation_delay: 1,
         }

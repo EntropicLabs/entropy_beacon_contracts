@@ -227,6 +227,7 @@ pub fn submit_entropy(
             id: SUBMSG_REPLY_ID,
             msg: EntropyCallbackMsg {
                 entropy: entropy.to_vec(),
+                requester: req.submitter,
                 msg: req.callback_msg,
             }
             .into_cosmos_msg(req.callback_address)?, //TODO: validate the callback address, maybe in request_entropy?
@@ -363,12 +364,8 @@ pub fn last_entropy_query(deps: Deps) -> StdResult<LastEntropyResponse> {
 
 pub fn active_requests_query(deps: Deps) -> StdResult<ActiveRequestsResponse> {
     let requests = ACTIVE_REQUESTS.load(deps.storage)?;
-    Ok(ActiveRequestsResponse {
-        bounties: requests
-            .iter()
-            .map(|req| req.submitted_bounty_amount)
-            .collect(),
-    })
+    let requests = requests.iter().map(|r| r.clone().into_info()).collect();
+    Ok(ActiveRequestsResponse { requests })
 }
 
 pub fn beacon_config_query(deps: Deps) -> StdResult<BeaconConfigResponse> {
