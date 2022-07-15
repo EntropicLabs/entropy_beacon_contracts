@@ -277,9 +277,11 @@ pub fn request_entropy(
         submitted_block_height: env.block.height,
         submitted_bounty_amount: received_funds_amt,
     };
+
     let mut active_requests = ACTIVE_REQUESTS.load(deps.storage)?;
     active_requests.push(request);
     ACTIVE_REQUESTS.save(deps.storage, &active_requests)?;
+
     Ok(Response::new()
         .add_attribute("action", "request_entropy")
         .add_attribute("request_id", format!("{}", active_requests.len() - 1)))
