@@ -3,12 +3,15 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
     BankMsg, CosmosMsg, Empty, Env, OwnedDeps,
 };
-use ecvrf::PublicKey;
-use entropy_beacon_cosmos::provide::{KeyStatusQuery, ReclaimDepositMsg, WhitelistPublicKeyMsg};
+use ecvrf::{Proof, PublicKey};
+use entropy_beacon_cosmos::provide::{
+    KeyStatusQuery, ReclaimDepositMsg, SubmitEntropyMsg, WhitelistPublicKeyMsg,
+};
 
 use crate::{
-    contract::{key_status_query, reclaim_deposit, whitelist_key},
+    contract::{key_status_query, reclaim_deposit, submit_entropy, whitelist_key},
     state::WHITELISTED_KEYS,
+    tests::{test_sk, test_submit_entropy},
     ContractError,
 };
 
@@ -17,7 +20,7 @@ use super::{default_instantiate, test_pk};
 fn setup_contract(deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier, Empty>, env: Env) {
     default_instantiate(deps.as_mut());
 
-    let info = mock_info("executor", &[coin(1000, "uluna")]);
+    let info = mock_info("submitter", &[coin(1000, "uluna")]);
 
     let msg = WhitelistPublicKeyMsg {
         public_key: test_pk(),
@@ -31,7 +34,7 @@ fn unwhitelists_key() {
     let env = mock_env();
     setup_contract(&mut deps, env.clone());
 
-    let info = mock_info("executor", &[]);
+    let info = mock_info("submitter", &[]);
     let msg = ReclaimDepositMsg {
         public_key: test_pk(),
     };
@@ -59,10 +62,14 @@ fn unwhitelists_key() {
 #[test]
 fn returns_deposit() {
     let mut deps = mock_dependencies();
-    let env = mock_env();
-    setup_contract(&mut deps, env.clone());
+    let mut env = mock_env();
 
-    let info = mock_info("executor", &[]);
+    test_submit_entropy::setup_contract(&mut deps, &mut env);
+    let info = mock_info("submitter", &[]);
+    let last_entropy = "".to_string();
+    let proof = Proof::new(&test_sk(), last_entropy).unwrap();
+    submit_entropy(deps.as_mut(), env.clone(), info.clone(), SubmitEntropyMsg { proof }).unwrap();
+
     let msg = ReclaimDepositMsg {
         public_key: test_pk(),
     };
@@ -82,8 +89,40 @@ fn returns_deposit() {
     assert_eq!(
         res.messages[0].msg,
         CosmosMsg::Bank(BankMsg::Send {
-            to_address: "executor".to_string(),
+            to_address: "submitter".to_string(),
             amount: coins(1000, "uluna"),
+        })
+    );
+}
+
+#[test]
+fn respects_refund_increments() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    setup_contract(&mut deps, env.clone());
+
+    let info = mock_info("submitter", &[]);
+    let msg = ReclaimDepositMsg {
+        public_key: test_pk(),
+    };
+
+    let res = reclaim_deposit(deps.as_mut(), env, info, msg);
+    assert!(res.is_ok());
+    let res = res.unwrap();
+
+    let refund = res
+        .attributes
+        .into_iter()
+        .find(|a| a.key == "refund")
+        .unwrap()
+        .value;
+    assert_eq!(refund, format!("{}", 0));
+
+    assert_eq!(
+        res.messages[0].msg,
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: "submitter".to_string(),
+            amount: coins(0, "uluna"),
         })
     );
 }
@@ -94,7 +133,7 @@ fn rejects_unwhitelisted_keys() {
     let env = mock_env();
     setup_contract(&mut deps, env.clone());
 
-    let info = mock_info("executor", &[]);
+    let info = mock_info("submitter", &[]);
     let msg = ReclaimDepositMsg {
         public_key: PublicKey::from_bytes(&[0u8; 32]),
     };
@@ -109,7 +148,7 @@ fn rejects_unauthorized_claimers() {
     let env = mock_env();
     setup_contract(&mut deps, env.clone());
 
-    let info = mock_info("not_executor", &[]);
+    let info = mock_info("not_submitter", &[]);
     let msg = ReclaimDepositMsg {
         public_key: test_pk(),
     };

@@ -48,6 +48,7 @@ serde = { version = "1.0.137", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.31" }
 entropy_beacon_cosmos = { path = "../../packages/entropy_beacon_cosmos" }
 ecvrf = { path = "../../packages/ecvrf-rs" }
+sha2 = "0.10.2"
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"

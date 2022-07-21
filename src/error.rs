@@ -35,4 +35,7 @@ pub enum ContractError {
 
     #[error("Invalid reply ID")]
     InvalidReplyId {},
+
+    #[error("No active requests")]
+    NoActiveRequests {},
 }

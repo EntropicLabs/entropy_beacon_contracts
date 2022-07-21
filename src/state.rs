@@ -15,6 +15,8 @@ pub struct Config {
     pub owner: Addr,
     ///The amount of tokens that must be deposited to whitelist a new public key.
     pub whitelist_deposit_amt: Uint128,
+    ///The amount of the deposit that unlocks with each submission of entropy.
+    pub refund_increment_amt: Uint128,
     ///The time, in blocks, before a whitelisted public key can be used to submit entropy.
     pub key_activation_delay: u64,
     ///The fee that the protocol contract charges on top of the requested gas fees.
@@ -60,6 +62,7 @@ impl EntropyRequest {
 pub struct KeyInfo {
     pub holder: Addr,
     pub deposit_amount: Uint128,
+    pub refundable_amount: Uint128,
     pub creation_height: u64,
 }
 

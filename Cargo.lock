@@ -41,6 +41,7 @@ dependencies = [
  "hex",
  "schemars",
  "serde",
+ "sha2 0.10.2",
  "thiserror",
 ]
 

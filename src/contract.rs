@@ -15,6 +15,7 @@ use entropy_beacon_cosmos::{
     },
     EntropyCallbackMsg,
 };
+use sha2::{Digest, Sha512};
 
 use crate::state::{
     Config, EntropyRequest, State, ACTIVE_REQUESTS, CONFIG, STATE, WHITELISTED_KEYS,
@@ -43,6 +44,7 @@ pub fn instantiate(
     let cfg = Config {
         owner: info.sender.clone(),
         whitelist_deposit_amt: msg.whitelist_deposit_amt,
+        refund_increment_amt: msg.refund_increment_amt,
         key_activation_delay: msg.key_activation_delay,
         protocol_fee: msg.protocol_fee,
         submitter_share: Decimal::percent(msg.submitter_share),
@@ -137,6 +139,7 @@ pub fn whitelist_key(
         &KeyInfo {
             creation_height: env.block.height,
             deposit_amount: cfg.whitelist_deposit_amt,
+            refundable_amount: Uint128::zero(),
             holder: info.sender,
         },
     )?;
@@ -170,17 +173,19 @@ pub fn reclaim_deposit(
 
     WHITELISTED_KEYS.remove(deps.storage, key.as_bytes());
 
+    let refund_amt = key_info.refundable_amount.min(key_info.deposit_amount);
+
     Ok(Response::new()
         .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: key_info.holder.to_string(),
             amount: vec![Coin {
                 denom: "uluna".to_string(),
-                amount: key_info.deposit_amount,
+                amount: refund_amt,
             }],
         }))
         .add_attribute("action", "reclaim_deposit")
         .add_attribute("unwhitelisted_key", format!("{}", key))
-        .add_attribute("refund", format!("{}", key_info.deposit_amount)))
+        .add_attribute("refund", format!("{}", refund_amt)))
 }
 
 /// Allows a public key holder to submit entropy through the VRF proof.
@@ -201,6 +206,12 @@ pub fn submit_entropy(
     let mut state = STATE.load(deps.storage)?;
     let cfg = CONFIG.load(deps.storage)?;
     let proof = data.proof;
+    let requests = ACTIVE_REQUESTS.load(deps.storage)?;
+
+    if requests.is_empty() {
+        return Err(ContractError::NoActiveRequests {});
+    }
+
     if state.last_entropy.unwrap_or_default() != proof.message_bytes {
         return Err(ContractError::InvalidMessage {});
     }
@@ -208,7 +219,7 @@ pub fn submit_entropy(
     let key = &proof.signer;
     check_key(&deps.as_ref(), &env, key, &cfg)?;
 
-    let key_info = WHITELISTED_KEYS.load(deps.storage, key.as_bytes())?;
+    let mut key_info = WHITELISTED_KEYS.load(deps.storage, key.as_bytes())?;
     if key_info.holder != info.sender {
         return Err(ContractError::Unauthorized {});
     }
@@ -218,22 +229,31 @@ pub fn submit_entropy(
     state.last_entropy = Some(entropy.to_vec());
     STATE.save(deps.storage, &state)?;
 
-    let requests = ACTIVE_REQUESTS.load(deps.storage)?;
-    //TODO the payout should have a nominal amount deducted from it for a protocol fee.
+    key_info.refundable_amount =
+        (key_info.refundable_amount + cfg.refund_increment_amt).min(key_info.deposit_amount);
+    WHITELISTED_KEYS.save(deps.storage, key.as_bytes(), &key_info)?;
+
     let payout: Uint128 = requests.iter().map(|req| req.submitted_bounty_amount).sum();
+    let payout = payout * cfg.submitter_share;
     let mut submsgs = vec![];
+
+    let mut cur_entropy = entropy;
     for req in requests {
         submsgs.push(SubMsg {
             id: SUBMSG_REPLY_ID,
             msg: EntropyCallbackMsg {
-                entropy: entropy.to_vec(),
+                entropy: cur_entropy.to_vec(),
                 requester: req.submitter,
                 msg: req.callback_msg,
             }
-            .into_cosmos_msg(req.callback_address)?, //TODO: validate the callback address, maybe in request_entropy?
+            .into_cosmos_msg(req.callback_address)?,
             gas_limit: Some(req.callback_gas_limit),
             reply_on: ReplyOn::Always,
         });
+
+        let mut hasher = Sha512::new();
+        hasher.update(&cur_entropy);
+        cur_entropy = hasher.finalize().into();
     }
     ACTIVE_REQUESTS.save(deps.storage, &vec![])?;
     let mut response = Response::new();

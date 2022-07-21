@@ -28,6 +28,7 @@ pub fn test_sk() -> SecretKey {
 pub fn default_instantiate(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         whitelist_deposit_amt: Uint128::from(1000u128),
+        refund_increment_amt: Uint128::from(1000u128),
         key_activation_delay: 1,
         protocol_fee: 100,
         submitter_share: 80,
