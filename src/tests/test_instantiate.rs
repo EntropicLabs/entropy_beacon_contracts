@@ -1,7 +1,17 @@
-use cosmwasm_std::{testing::mock_dependencies, Attribute, Decimal, Uint128};
-use entropy_beacon_cosmos::provide::BeaconConfigResponse;
+use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env, mock_info},
+    Attribute, Decimal, Uint128,
+};
+use entropy_beacon_cosmos::provide::{BeaconConfigResponse, KeyStatusQuery};
 
-use crate::{contract::beacon_config_query, tests::default_instantiate};
+use crate::{
+    contract::{beacon_config_query, instantiate, key_status_query},
+    msg::InstantiateMsg,
+    tests::default_instantiate,
+};
+
+use super::test_pk;
+
 #[test]
 fn instantiates_correctly() {
     let mut deps = mock_dependencies();
@@ -32,4 +42,34 @@ fn instantiates_correctly() {
             key_activation_delay: 1,
         }
     );
+}
+
+#[test]
+fn with_prewhitelisted_keys() {
+    let mut deps = mock_dependencies();
+    let msg = InstantiateMsg {
+        whitelist_deposit_amt: Uint128::from(1000u128),
+        refund_increment_amt: Uint128::from(1000u128),
+        key_activation_delay: 1,
+        protocol_fee: 100,
+        submitter_share: 80,
+        native_denom: "uluna".to_string(),
+        whitelisted_keys: vec![test_pk()],
+    };
+    let env = mock_env();
+    let info = mock_info("creator", vec![].as_slice());
+
+    // we can just call .unwrap() to assert this was a success
+    instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    let status_res = key_status_query(
+        deps.as_ref(),
+        env.clone(),
+        KeyStatusQuery {
+            public_key: test_pk(),
+        },
+    )
+    .unwrap();
+    assert!(status_res.whitelisted);
+    assert_eq!(status_res.activation_height, env.block.height + 1);
 }

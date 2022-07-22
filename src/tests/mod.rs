@@ -33,6 +33,7 @@ pub fn default_instantiate(deps: DepsMut) -> Response {
         protocol_fee: 100,
         submitter_share: 80,
         native_denom: "uluna".to_string(),
+        whitelisted_keys: vec![],
     };
     let env = mock_env();
     let info = mock_info("creator", vec![].as_slice());

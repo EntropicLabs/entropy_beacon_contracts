@@ -34,7 +34,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -54,6 +54,22 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &cfg)?;
 
     ACTIVE_REQUESTS.save(deps.storage, &vec![])?;
+
+    for key in msg.whitelisted_keys {
+        if key.validate().is_err() {
+            return Err(ContractError::InvalidPublicKey {});
+        }
+        WHITELISTED_KEYS.save(
+            deps.storage,
+            key.as_bytes(),
+            &KeyInfo {
+                holder: info.sender.clone(),
+                deposit_amount: Uint128::zero(),
+                refundable_amount: Uint128::zero(),
+                creation_height: env.block.height,
+            },
+        )?;
+    }
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
