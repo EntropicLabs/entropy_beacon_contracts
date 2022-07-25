@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Reply,
-    ReplyOn, Response, StdError, StdResult, SubMsg, SubMsgResult, Uint128,
+    ReplyOn, Response, StdError, StdResult, SubMsg, Uint128,
 };
 use cw2::set_contract_version;
 use ecvrf::encode_hex;
@@ -331,15 +331,7 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
         return Err(ContractError::InvalidReplyId {});
     }
 
-    Ok(Response::new()
-        .add_attribute("action", "callback_reply")
-        .add_attribute(
-            "callback_status",
-            match msg.result {
-                SubMsgResult::Ok(_) => "ok".to_string(),
-                SubMsgResult::Err(e) => format!("Error: {}", e),
-            },
-        ))
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
