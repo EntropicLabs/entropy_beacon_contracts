@@ -2,12 +2,12 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Reply,
-    ReplyOn, Response, StdError, StdResult, SubMsg, Uint128,
+    ReplyOn, Response, StdError, StdResult, SubMsg, SubMsgResult, Uint128,
 };
 use cw2::set_contract_version;
 use ecvrf::encode_hex;
 use entropy_beacon_cosmos::{
-    beacon::{RequestEntropyMsg, UpdateConfigMsg},
+    beacon::{calculate_gas_cost, RequestEntropyMsg, UpdateConfigMsg},
     msg::{ExecuteMsg, QueryMsg},
     provide::{
         ActiveRequestsResponse, BeaconConfigResponse, KeyStatusQuery, KeyStatusResponse,
@@ -55,7 +55,7 @@ pub fn instantiate(
 
     ACTIVE_REQUESTS.save(deps.storage, &vec![])?;
 
-    for key in msg.whitelisted_keys {
+    for (addr, key) in msg.whitelisted_keys {
         if key.validate().is_err() {
             return Err(ContractError::InvalidPublicKey {});
         }
@@ -63,7 +63,7 @@ pub fn instantiate(
             deps.storage,
             key.as_bytes(),
             &KeyInfo {
-                holder: info.sender.clone(),
+                holder: addr,
                 deposit_amount: Uint128::zero(),
                 refundable_amount: Uint128::zero(),
                 creation_height: env.block.height,
@@ -300,8 +300,16 @@ pub fn request_entropy(
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
 
-    let received_funds_amt: Uint128 = info.funds.iter().map(|c| c.amount).sum();
-    if received_funds_amt < Uint128::from(data.callback_gas_limit + cfg.protocol_fee) {
+    let received_funds_amt: Uint128 = info
+        .funds
+        .iter()
+        .filter(|c| c.denom == cfg.native_denom)
+        .map(|c| c.amount)
+        .sum();
+    let gas_cost = calculate_gas_cost(data.callback_gas_limit);
+    let protocol_fee = Uint128::from(cfg.protocol_fee);
+
+    if received_funds_amt < gas_cost + protocol_fee {
         return Err(ContractError::InsufficientFunds {});
     }
 
@@ -330,8 +338,13 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     if msg.id != SUBMSG_REPLY_ID {
         return Err(ContractError::InvalidReplyId {});
     }
-
-    Ok(Response::new())
+    match msg.result {
+        SubMsgResult::Ok(_) => Ok(Response::new()),
+        SubMsgResult::Err(e) => Ok(Response::new()
+            .set_data(e.as_bytes())
+            .add_attribute("action", "reply_error")
+            .add_attribute("error", e)),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

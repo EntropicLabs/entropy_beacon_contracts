@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
-    Attribute, Decimal, Uint128,
+    Addr, Attribute, Decimal, Uint128,
 };
 use entropy_beacon_cosmos::provide::{BeaconConfigResponse, KeyStatusQuery};
 
@@ -54,7 +54,7 @@ fn with_prewhitelisted_keys() {
         protocol_fee: 100,
         submitter_share: 80,
         native_denom: "uluna".to_string(),
-        whitelisted_keys: vec![test_pk()],
+        whitelisted_keys: vec![(Addr::unchecked("creator"), test_pk())],
     };
     let env = mock_env();
     let info = mock_info("creator", vec![].as_slice());

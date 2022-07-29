@@ -5,7 +5,7 @@ use cosmwasm_std::{
 };
 
 use entropy_beacon_cosmos::{
-    beacon::RequestEntropyMsg,
+    beacon::{calculate_gas_cost, RequestEntropyMsg},
     provide::{ActiveRequestInfo, WhitelistPublicKeyMsg},
 };
 
@@ -65,7 +65,10 @@ fn rejects_insufficient_funds() {
     let mut env = mock_env();
     setup_contract(&mut deps, &mut env);
 
-    let info = mock_info("requester", &[coin(1000, "uluna")]);
+    let info = mock_info(
+        "requester",
+        &[coin(calculate_gas_cost(1000).u128(), "uluna")],
+    );
 
     let request_msg = RequestEntropyMsg {
         callback_gas_limit: 1000,
