@@ -10,8 +10,9 @@ use entropy_beacon_cosmos::{
     beacon::{calculate_gas_cost, RequestEntropyMsg, UpdateConfigMsg},
     msg::{ExecuteMsg, QueryMsg},
     provide::{
-        ActiveRequestsResponse, BeaconConfigResponse, KeyStatusQuery, KeyStatusResponse,
-        LastEntropyResponse, ReclaimDepositMsg, SubmitEntropyMsg, WhitelistPublicKeyMsg,
+        ActiveRequestsResponse, AdminReturnDepositMsg, BeaconConfigResponse, KeyStatusQuery,
+        KeyStatusResponse, LastEntropyResponse, ReclaimDepositMsg, SubmitEntropyMsg,
+        WhitelistPublicKeyMsg,
     },
     EntropyCallbackMsg,
 };
@@ -89,7 +90,36 @@ pub fn execute(
         ExecuteMsg::ReclaimDeposit(data) => reclaim_deposit(deps, env, info, data),
         ExecuteMsg::SubmitEntropy(data) => submit_entropy(deps, env, info, data),
         ExecuteMsg::RequestEntropy(data) => request_entropy(deps, env, info, data),
+        ExecuteMsg::AdminReturnDeposit(data) => admin_return_deposit(deps, env, info, data),
     }
+}
+
+pub fn admin_return_deposit(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    data: AdminReturnDepositMsg,
+) -> Result<Response, ContractError> {
+    let cfg = CONFIG.load(deps.storage)?;
+    if cfg.owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    if !is_whitelisted(&deps.as_ref(), &data.key) {
+        return Err(ContractError::KeyNotWhitelisted {});
+    }
+    let key_info = WHITELISTED_KEYS.load(deps.storage, data.key.as_bytes())?;
+    WHITELISTED_KEYS.remove(deps.storage, data.key.as_bytes());
+    Ok(Response::new()
+        .add_message(CosmosMsg::Bank(BankMsg::Send {
+            to_address: key_info.holder.to_string(),
+            amount: vec![Coin {
+                denom: "uluna".to_string(),
+                amount: key_info.deposit_amount,
+            }],
+        }))
+        .add_attribute("action", "reclaim_deposit")
+        .add_attribute("unwhitelisted_key", format!("{}", data.key))
+        .add_attribute("refund", format!("{}", key_info.deposit_amount)))
 }
 
 /// Update the configuration of the contract

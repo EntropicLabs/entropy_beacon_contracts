@@ -8,6 +8,7 @@ use crate::{contract::instantiate, msg::InstantiateMsg};
 
 mod test_instantiate;
 mod test_reclaim_deposit;
+mod test_admin_return_deposit;
 mod test_request_entropy;
 mod test_submit_entropy;
 mod test_whitelist_key;
