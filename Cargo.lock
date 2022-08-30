@@ -36,7 +36,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus",
  "cw2",
- "ecvrf",
+ "ecvrf-rs",
  "entropy_beacon_cosmos",
  "hex",
  "schemars",
@@ -207,9 +207,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "curve25519-dalek"
-version = "3.2.0"
-source = "git+https://github.com/AmitPr/curve25519-dalek#d2d589466711668f9a5923a8e59413d9a38b8351"
+name = "curve25519-entropic"
+version = "3.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a243c747c7472bca3ba63092c953d245fd1812050b23c31e72d6f13532f95bec"
 dependencies = [
  "byteorder",
  "digest 0.9.0",
@@ -330,10 +331,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "ecvrf"
-version = "0.1.0"
+name = "ecvrf-rs"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "564f7e65d575eedb7c50f4d1448a95e950462c9022b23e7abf3129f876b6ce4d"
 dependencies = [
- "curve25519-dalek 3.2.0 (git+https://github.com/AmitPr/curve25519-dalek)",
+ "curve25519-entropic",
  "schemars",
  "serde",
  "sha2 0.10.2",
@@ -346,7 +349,7 @@ version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "403ef3e961ab98f0ba902771d29f842058578bb1ce7e3c59dad5a6a93e784c69"
 dependencies = [
- "curve25519-dalek 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "curve25519-dalek",
  "hex",
  "rand_core 0.6.3",
  "serde",
@@ -381,10 +384,12 @@ dependencies = [
 
 [[package]]
 name = "entropy_beacon_cosmos"
-version = "1.0.1"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56b9c21ea9cca1c18e06517e149de4e10b67f71a6e62f30f91cd2016e8126f12"
 dependencies = [
  "cosmwasm-std",
- "ecvrf",
+ "ecvrf-rs",
  "schemars",
  "serde",
 ]
