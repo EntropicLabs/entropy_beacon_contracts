@@ -5,7 +5,7 @@ use cosmwasm_std::{
     ReplyOn, Response, StdError, StdResult, SubMsg, SubMsgResult, Uint128,
 };
 use cw2::set_contract_version;
-use ecvrf::encode_hex;
+use ecvrf_rs::encode_hex;
 use entropy_beacon_cosmos::{
     beacon::{calculate_gas_cost, RequestEntropyMsg, UpdateConfigMsg},
     msg::{ExecuteMsg, QueryMsg},

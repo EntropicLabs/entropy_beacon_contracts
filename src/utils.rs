@@ -1,5 +1,5 @@
 use cosmwasm_std::{Deps, Env};
-use ecvrf::PublicKey;
+use ecvrf_rs::PublicKey;
 
 use crate::{
     state::{WHITELISTED_KEYS, Config},

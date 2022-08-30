@@ -2,7 +2,7 @@ use cosmwasm_std::{
     testing::{mock_env, mock_info},
     DepsMut, Response, Uint128,
 };
-use ecvrf::{PublicKey, SecretKey};
+use ecvrf_rs::{PublicKey, SecretKey};
 
 use crate::{contract::instantiate, msg::InstantiateMsg};
 

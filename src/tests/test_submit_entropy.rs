@@ -4,7 +4,7 @@ use cosmwasm_std::{
     Empty, Env, OwnedDeps, Addr, to_binary,
 };
 
-use ecvrf::{encode_hex, Proof, SecretKey};
+use ecvrf_rs::{encode_hex, Proof, SecretKey};
 use entropy_beacon_cosmos::{provide::{SubmitEntropyMsg, WhitelistPublicKeyMsg}, beacon::RequestEntropyMsg};
 
 use crate::{

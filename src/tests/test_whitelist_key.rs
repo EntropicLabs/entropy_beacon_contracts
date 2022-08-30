@@ -2,7 +2,7 @@ use cosmwasm_std::{
     coin,
     testing::{mock_dependencies, mock_env, mock_info},
 };
-use ecvrf::PublicKey;
+use ecvrf_rs::PublicKey;
 use entropy_beacon_cosmos::provide::{KeyStatusQuery, WhitelistPublicKeyMsg};
 
 use crate::{

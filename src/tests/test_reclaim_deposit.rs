@@ -3,7 +3,7 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
     BankMsg, CosmosMsg, Empty, Env, OwnedDeps,
 };
-use ecvrf::{Proof, PublicKey};
+use ecvrf_rs::{Proof, PublicKey};
 use entropy_beacon_cosmos::provide::{
     KeyStatusQuery, ReclaimDepositMsg, SubmitEntropyMsg, WhitelistPublicKeyMsg,
 };

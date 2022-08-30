@@ -1,5 +1,5 @@
 use cosmwasm_std::{Uint128, Addr};
-use ecvrf::PublicKey;
+use ecvrf_rs::PublicKey;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
