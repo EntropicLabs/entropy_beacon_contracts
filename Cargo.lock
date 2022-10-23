@@ -28,7 +28,7 @@ checksum = "dea908e7347a8c64e378c17e30ef880ad73e3b4498346b055c2c00ea342f3179"
 
 [[package]]
 name = "beacon"
-version = "1.0.1"
+version = "2.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -384,9 +384,7 @@ dependencies = [
 
 [[package]]
 name = "entropy_beacon_cosmos"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8513eee2bd74cde831b55ad36f064dc868d7b7f9a85d9ab7a2ddab18310f5f03"
+version = "1.1.2"
 dependencies = [
  "cosmwasm-std",
  "ecvrf-rs",

@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     testing::{mock_env, mock_info},
-    DepsMut, Response, Uint128,
+    DepsMut, Response, Uint128, Decimal,
 };
 use ecvrf_rs::{PublicKey, SecretKey};
 
@@ -12,6 +12,8 @@ mod test_admin_return_deposit;
 mod test_request_entropy;
 mod test_submit_entropy;
 mod test_whitelist_key;
+mod test_calculate_gas;
+mod test_active_request_query;
 
 pub fn test_pk() -> PublicKey {
     let pk =
@@ -35,6 +37,8 @@ pub fn default_instantiate(deps: DepsMut) -> Response {
         submitter_share: 80,
         native_denom: "uluna".to_string(),
         whitelisted_keys: vec![],
+        belief_gas_price: Decimal::percent(15),
+        permissioned: false,
     };
     let env = mock_env();
     let info = mock_info("creator", vec![].as_slice());

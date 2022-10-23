@@ -1,4 +1,4 @@
-use cosmwasm_std::{Uint128, Addr};
+use cosmwasm_std::{Uint128, Addr, Decimal};
 use ecvrf_rs::PublicKey;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,8 @@ pub struct InstantiateMsg {
     pub submitter_share: u64,
     pub native_denom: String,
     pub whitelisted_keys: Vec<(Addr, PublicKey)>,
+    pub belief_gas_price: Decimal,
+    pub permissioned: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

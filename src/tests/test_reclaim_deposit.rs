@@ -9,7 +9,7 @@ use entropy_beacon_cosmos::provide::{
 };
 
 use crate::{
-    contract::{key_status_query, reclaim_deposit, submit_entropy, whitelist_key},
+    execute, query,
     state::WHITELISTED_KEYS,
     tests::{test_sk, test_submit_entropy},
     ContractError,
@@ -25,7 +25,7 @@ fn setup_contract(deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier, Empty>
     let msg = WhitelistPublicKeyMsg {
         public_key: test_pk(),
     };
-    whitelist_key(deps.as_mut(), env, info, msg).unwrap();
+    execute::whitelist_key(deps.as_mut(), env, info, msg).unwrap();
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn unwhitelists_key() {
         public_key: test_pk(),
     };
 
-    let res = reclaim_deposit(deps.as_mut(), env.clone(), info, msg);
+    let res = execute::reclaim_deposit(deps.as_mut(), env.clone(), info, msg);
 
     assert!(res.is_ok());
 
@@ -47,7 +47,7 @@ fn unwhitelists_key() {
         .load(deps.as_mut().storage, test_pk().as_bytes())
         .is_err());
 
-    let res = key_status_query(
+    let res = query::key_status_query(
         deps.as_ref(),
         env,
         KeyStatusQuery {
@@ -68,13 +68,22 @@ fn returns_deposit() {
     let info = mock_info("submitter", &[]);
     let last_entropy = "".to_string();
     let proof = Proof::new(&test_sk(), last_entropy).unwrap();
-    submit_entropy(deps.as_mut(), env.clone(), info.clone(), SubmitEntropyMsg { proof }).unwrap();
+    execute::submit_entropy(
+        deps.as_mut(),
+        env.clone(),
+        info.clone(),
+        SubmitEntropyMsg {
+            proof,
+            request_ids: vec![0u128],
+        },
+    )
+    .unwrap();
 
     let msg = ReclaimDepositMsg {
         public_key: test_pk(),
     };
 
-    let res = reclaim_deposit(deps.as_mut(), env, info, msg);
+    let res = execute::reclaim_deposit(deps.as_mut(), env, info, msg);
     assert!(res.is_ok());
     let res = res.unwrap();
 
@@ -106,7 +115,7 @@ fn respects_refund_increments() {
         public_key: test_pk(),
     };
 
-    let res = reclaim_deposit(deps.as_mut(), env, info, msg);
+    let res = execute::reclaim_deposit(deps.as_mut(), env, info, msg);
     assert!(res.is_ok());
     let res = res.unwrap();
 
@@ -138,7 +147,7 @@ fn rejects_unwhitelisted_keys() {
         public_key: PublicKey::from_bytes(&[0u8; 32]),
     };
 
-    let res = reclaim_deposit(deps.as_mut(), env, info, msg);
+    let res = execute::reclaim_deposit(deps.as_mut(), env, info, msg);
     assert_eq!(res.unwrap_err(), ContractError::KeyNotWhitelisted {});
 }
 
@@ -153,6 +162,6 @@ fn rejects_unauthorized_claimers() {
         public_key: test_pk(),
     };
 
-    let res = reclaim_deposit(deps.as_mut(), env, info, msg);
+    let res = execute::reclaim_deposit(deps.as_mut(), env, info, msg);
     assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
 }

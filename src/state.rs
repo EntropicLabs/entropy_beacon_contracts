@@ -9,6 +9,10 @@ use cw_storage_plus::{Item, Map};
 pub struct State {
     ///The last submitted entropy.
     pub last_entropy: Option<Vec<u8>>,
+    ///Currently believed gas price.
+    pub belief_gas_price: Decimal,
+    ///Current request id counter.
+    pub cur_request_id: u128,
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
@@ -25,11 +29,17 @@ pub struct Config {
     pub submitter_share: Decimal,
     ///The native currency of the target chain.
     pub native_denom: String,
+    ///Whether or not the contract is paused.
+    pub paused: bool,
+    ///Whether or not the contract is in permissioned mode.
+    pub permissioned: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct EntropyRequest {
+    ///The id of the request.
+    pub id: u128,
     ///How much gas the requester has provisioned for their callback transaction.
     pub callback_gas_limit: u64,
     ///The address to send the callback message to.
@@ -48,6 +58,7 @@ pub struct EntropyRequest {
 impl EntropyRequest {
     pub fn into_info(self) -> ActiveRequestInfo {
         ActiveRequestInfo {
+            id: self.id,
             callback_gas_limit: self.callback_gas_limit,
             callback_address: self.callback_address,
             submitter: self.submitter,
@@ -69,4 +80,5 @@ pub struct KeyInfo {
 pub const STATE: Item<State> = Item::new("state");
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const WHITELISTED_KEYS: Map<&[u8], KeyInfo> = Map::new("whitelisted_keys");
-pub const ACTIVE_REQUESTS: Item<Vec<EntropyRequest>> = Item::new("active_requests");
+
+pub const ENTROPY_REQUESTS: Map<u128, EntropyRequest> = Map::new("entropy_requests");

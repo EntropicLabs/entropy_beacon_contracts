@@ -1,30 +1,23 @@
 use cosmwasm_std::{
     coin,
     testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    Empty, Env, OwnedDeps, Addr, to_binary,
+    to_binary, Addr, Empty, Env, OwnedDeps,
 };
 
 use ecvrf_rs::{encode_hex, Proof, SecretKey};
-use entropy_beacon_cosmos::{provide::{SubmitEntropyMsg, WhitelistPublicKeyMsg}, beacon::RequestEntropyMsg};
-
-use crate::{
-    contract::{last_entropy_query, submit_entropy, whitelist_key, request_entropy},
-    ContractError,
+use entropy_beacon_cosmos::{
+    beacon::RequestEntropyMsg,
+    provide::{SubmitEntropyMsg, WhitelistPublicKeyMsg},
 };
+
+use crate::{execute, query, ContractError};
 
 use super::{default_instantiate, test_pk, test_sk};
 
-pub fn setup_contract(deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier, Empty>, env: &mut Env) {
-    default_instantiate(deps.as_mut());
-
-    let info = mock_info("submitter", &[coin(1000, "uluna")]);
-
-    let msg = WhitelistPublicKeyMsg {
-        public_key: test_pk(),
-    };
-    whitelist_key(deps.as_mut(), env.clone(), info, msg).unwrap();
-    env.block.height += 1;
-
+pub fn request_entropy(
+    deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier, Empty>,
+    env: &mut Env,
+) {
     let info = mock_info("requester", &[coin(1100, "uluna")]);
 
     let request_msg = RequestEntropyMsg {
@@ -33,7 +26,24 @@ pub fn setup_contract(deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier, Em
         callback_msg: to_binary("callback_msg".as_bytes()).unwrap(),
     };
 
-    request_entropy(deps.as_mut(), env.clone(), info, request_msg).unwrap();
+    execute::request_entropy(deps.as_mut(), env.clone(), info, request_msg).unwrap();
+}
+
+pub fn setup_contract(
+    deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier, Empty>,
+    env: &mut Env,
+) {
+    default_instantiate(deps.as_mut());
+
+    let info = mock_info("submitter", &[coin(1000, "uluna")]);
+
+    let msg = WhitelistPublicKeyMsg {
+        public_key: test_pk(),
+    };
+    execute::whitelist_key(deps.as_mut(), env.clone(), info, msg).unwrap();
+    env.block.height += 1;
+
+    request_entropy(deps, env);
 }
 
 #[test]
@@ -48,11 +58,12 @@ fn submits_correctly() {
 
     let msg = SubmitEntropyMsg {
         proof: proof.clone(),
+        request_ids: vec![0u128],
     };
-    let res = submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert!(res.is_ok());
 
-    let last_entropy = last_entropy_query(deps.as_ref()).unwrap().entropy;
+    let last_entropy = query::last_entropy_query(deps.as_ref()).unwrap().entropy;
     assert_eq!(last_entropy, encode_hex(&proof.verify().unwrap()));
 }
 
@@ -66,8 +77,11 @@ fn rejects_wrong_message() {
     let fake_last_entropy = "NOT LAST ENTROPY".to_string();
     let proof = Proof::new(&test_sk(), fake_last_entropy).unwrap();
 
-    let msg = SubmitEntropyMsg { proof };
-    let res = submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    let msg = SubmitEntropyMsg {
+        proof,
+        request_ids: vec![0u128],
+    };
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(res.unwrap_err(), ContractError::InvalidMessage {});
 }
 
@@ -82,8 +96,11 @@ fn rejects_inactive_keys() {
     let last_entropy = "".to_string();
     let proof = Proof::new(&test_sk(), last_entropy).unwrap();
 
-    let msg = SubmitEntropyMsg { proof };
-    let res = submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    let msg = SubmitEntropyMsg {
+        proof,
+        request_ids: vec![0u128],
+    };
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(
         res.unwrap_err(),
         ContractError::KeyNotActive {
@@ -103,8 +120,11 @@ fn rejects_invalid_keys() {
     let sk = SecretKey::from_slice(&[0; 32]);
     let proof = Proof::new(&sk, last_entropy).unwrap();
 
-    let msg = SubmitEntropyMsg { proof };
-    let res = submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    let msg = SubmitEntropyMsg {
+        proof,
+        request_ids: vec![0u128],
+    };
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(res.unwrap_err(), ContractError::KeyNotWhitelisted {});
 }
 
@@ -118,8 +138,11 @@ fn rejects_unauthorized_sender() {
     let last_entropy = "".to_string();
     let proof = Proof::new(&test_sk(), last_entropy).unwrap();
 
-    let msg = SubmitEntropyMsg { proof };
-    let res = submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    let msg = SubmitEntropyMsg {
+        proof,
+        request_ids: vec![0u128],
+    };
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
 }
 
@@ -131,13 +154,104 @@ fn rejects_invalid_proofs() {
 
     let info = mock_info("submitter", &[]);
     let last_entropy = "".to_string();
-    let proof = Proof{
+    let proof = Proof {
         signer: test_pk(),
         message_bytes: last_entropy.into(),
         proof_bytes: vec![0; 80],
     };
 
-    let msg = SubmitEntropyMsg { proof };
-    let res = submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    let msg = SubmitEntropyMsg {
+        proof,
+        request_ids: vec![0u128],
+    };
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(res.unwrap_err(), ContractError::InvalidProof {});
+}
+
+#[test]
+fn submit_all_multiple_request_ids() {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    setup_contract(&mut deps, &mut env);
+    request_entropy(&mut deps, &mut env);
+
+    let info = mock_info("submitter", &[]);
+    let last_entropy = "".to_string();
+    let proof = Proof::new(&test_sk(), last_entropy).unwrap();
+
+    let msg = SubmitEntropyMsg {
+        proof,
+        request_ids: vec![0u128, 1u128],
+    };
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    assert!(res.is_ok());
+
+    let res = res.unwrap();
+    assert_eq!(res.messages.len(), 3);
+}
+
+#[test]
+fn submit_none_multiple_request_ids() {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    setup_contract(&mut deps, &mut env);
+    request_entropy(&mut deps, &mut env);
+
+    let info = mock_info("submitter", &[]);
+    let last_entropy = "".to_string();
+    let proof = Proof::new(&test_sk(), last_entropy).unwrap();
+
+    let msg = SubmitEntropyMsg {
+        proof,
+        request_ids: vec![],
+    };
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    assert!(res.is_ok());
+
+    let res = res.unwrap();
+    assert_eq!(res.messages.len(), 3);
+}
+
+#[test]
+fn submit_one_multiple_request_ids() {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    setup_contract(&mut deps, &mut env);
+    request_entropy(&mut deps, &mut env);
+
+    let info = mock_info("submitter", &[]);
+    let last_entropy = "".to_string();
+    let proof = Proof::new(&test_sk(), last_entropy).unwrap();
+
+    let msg = SubmitEntropyMsg {
+        proof,
+        request_ids: vec![1u128],
+    };
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    assert!(res.is_ok());
+
+    let res = res.unwrap();
+    assert_eq!(res.messages.len(), 2);
+}
+
+#[test]
+fn errors_on_invalid_request_id() {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    setup_contract(&mut deps, &mut env);
+    request_entropy(&mut deps, &mut env);
+
+    let info = mock_info("submitter", &[]);
+    let last_entropy = "".to_string();
+    let proof = Proof::new(&test_sk(), last_entropy).unwrap();
+
+    let msg = SubmitEntropyMsg {
+        proof,
+        request_ids: vec![2u128],
+    };
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    assert_eq!(
+        res.unwrap_err(),
+        ContractError::NoMatchingRequests { request_id: 2u128 }
+    );
 }
