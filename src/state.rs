@@ -33,6 +33,8 @@ pub struct Config {
     pub paused: bool,
     ///Whether or not the contract is in permissioned mode.
     pub permissioned: bool,
+    ///Whether or not the contract is in test mode.
+    pub test_mode: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

@@ -17,6 +17,7 @@ pub struct InstantiateMsg {
     pub whitelisted_keys: Vec<(Addr, PublicKey)>,
     pub belief_gas_price: Decimal,
     pub permissioned: bool,
+    pub test_mode: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

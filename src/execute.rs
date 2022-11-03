@@ -24,6 +24,9 @@ pub fn update_gas_price(
     gas_price: Decimal,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
+    if cfg.paused {
+        return Err(ContractError::Paused {});
+    }
     if cfg.owner != info.sender {
         return Err(ContractError::Unauthorized {});
     }
@@ -83,6 +86,7 @@ pub fn update_config(
     cfg.protocol_fee = data.protocol_fee;
     cfg.submitter_share = Decimal::percent(data.submitter_share);
     cfg.permissioned = data.permissioned;
+    cfg.paused = data.paused;
 
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -99,6 +103,9 @@ pub fn whitelist_key(
     data: WhitelistPublicKeyMsg,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
+    if cfg.paused {
+        return Err(ContractError::Paused {});
+    }
     if cfg.permissioned && cfg.owner != info.sender {
         return Err(ContractError::Unauthorized {});
     }
@@ -155,6 +162,9 @@ pub fn reclaim_deposit(
     data: ReclaimDepositMsg,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
+    if cfg.paused {
+        return Err(ContractError::Paused {});
+    }
     let key = data.public_key;
 
     if !is_whitelisted(&deps.as_ref(), &key) {
@@ -200,6 +210,9 @@ pub fn submit_entropy(
 ) -> Result<Response, ContractError> {
     let mut state = STATE.load(deps.storage)?;
     let cfg = CONFIG.load(deps.storage)?;
+    if cfg.paused {
+        return Err(ContractError::Paused {});
+    }
     let proof = data.proof;
     let request_ids = data.request_ids;
 
@@ -301,6 +314,9 @@ pub fn request_entropy(
     data: RequestEntropyMsg,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
+    if cfg.paused {
+        return Err(ContractError::Paused {});
+    }
     let mut state = STATE.load(deps.storage)?;
 
     let received_funds_amt: Uint128 = info

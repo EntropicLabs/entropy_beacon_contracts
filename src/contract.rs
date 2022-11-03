@@ -46,6 +46,7 @@ pub fn instantiate(
         native_denom: msg.native_denom,
         paused: false,
         permissioned: msg.permissioned,
+        test_mode: msg.test_mode,
     };
 
     STATE.save(deps.storage, &state)?;

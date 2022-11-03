@@ -68,16 +68,13 @@ pub fn active_requests_query(
     let limit = data
         .limit
         .unwrap_or(DEFAULT_PAGINATION_LIMIT)
-        .min(MAX_PAGINATION_LIMIT) as u128;
+        .min(MAX_PAGINATION_LIMIT);
 
     let start = data.start_after.map(Bound::exclusive);
-    let end = match data.start_after {
-        Some(start_after) => Some(Bound::inclusive(start_after + limit)),
-        None => Some(Bound::exclusive(limit)),
-    };
 
     let requests: Vec<_> = ENTROPY_REQUESTS
-        .range(deps.storage, start, end, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit as usize)
         .map(|item| item.map(|(_, r)| r.into_info()))
         .collect::<StdResult<_>>()?;
 

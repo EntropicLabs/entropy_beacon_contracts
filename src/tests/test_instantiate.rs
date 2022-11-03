@@ -56,6 +56,7 @@ fn with_prewhitelisted_keys() {
         whitelisted_keys: vec![(Addr::unchecked("creator"), test_pk())],
         belief_gas_price: Decimal::percent(15),
         permissioned: false,
+        test_mode: false,
     };
     let env = mock_env();
     let info = mock_info("creator", vec![].as_slice());
