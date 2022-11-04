@@ -2,12 +2,9 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
     Addr, Attribute, Decimal, Uint128,
 };
-use entropy_beacon_cosmos::provide::{BeaconConfigResponse, KeyStatusQuery};
+use entropy_beacon_cosmos::{provide::{BeaconConfigResponse, KeyStatusQuery}, msg::InstantiateMsg};
 
-use crate::{
-    msg::InstantiateMsg,
-    tests::default_instantiate, query, contract::instantiate,
-};
+use crate::{contract::instantiate, query, tests::default_instantiate};
 
 use super::test_pk;
 

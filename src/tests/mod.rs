@@ -3,8 +3,9 @@ use cosmwasm_std::{
     DepsMut, Response, Uint128, Decimal,
 };
 use ecvrf_rs::{PublicKey, SecretKey};
+use entropy_beacon_cosmos::msg::InstantiateMsg;
 
-use crate::{contract::instantiate, msg::InstantiateMsg};
+use crate::contract::instantiate;
 
 mod test_instantiate;
 mod test_reclaim_deposit;

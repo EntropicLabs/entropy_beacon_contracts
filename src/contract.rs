@@ -5,17 +5,14 @@ use cosmwasm_std::{
     SubMsgResult, Uint128,
 };
 use cw2::set_contract_version;
-use entropy_beacon_cosmos::msg::{ExecuteMsg, QueryMsg};
+use entropy_beacon_cosmos::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 use crate::{error::ContractError, msg::MigrateMsg, query};
 use crate::{
     execute,
     state::{Config, State, CONFIG, STATE, WHITELISTED_KEYS},
 };
-use crate::{
-    msg::{InstantiateMsg, SUBMSG_REPLY_ID},
-    state::KeyInfo,
-};
+use crate::{msg::SUBMSG_REPLY_ID, state::KeyInfo};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:entropy";

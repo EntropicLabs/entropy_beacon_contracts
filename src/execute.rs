@@ -1,6 +1,8 @@
+use std::convert::TryInto;
+
 use cosmwasm_std::{
-    BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, Order, ReplyOn, Response, SubMsg,
-    Uint128, StdError,
+    BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, Order, ReplyOn, Response,
+    StdError, SubMsg, Uint128,
 };
 use ecvrf_rs::encode_hex;
 use entropy_beacon_cosmos::{
@@ -75,7 +77,7 @@ pub fn update_config(
     data: UpdateConfigMsg,
 ) -> Result<Response, ContractError> {
     let mut cfg = CONFIG.load(deps.storage)?;
-    
+
     if cfg.owner != info.sender {
         return Err(ContractError::Unauthorized {});
     }
@@ -220,14 +222,14 @@ pub fn submit_entropy(
         request_ids
             .iter()
             .map(|id| {
-                let req = ENTROPY_REQUESTS.load(deps.storage, *id).map_err(
-                    |e| match e {
+                let req = ENTROPY_REQUESTS
+                    .load(deps.storage, *id)
+                    .map_err(|e| match e {
                         StdError::NotFound { .. } => {
                             ContractError::NoMatchingRequests { request_id: *id }
                         }
                         _ => ContractError::Std(e),
-                    },
-                )?;
+                    })?;
                 Ok((*id, req))
             })
             .collect::<Result<Vec<_>, ContractError>>()?
@@ -241,28 +243,39 @@ pub fn submit_entropy(
             .collect::<Result<Vec<_>, ContractError>>()?
     };
 
-    if state.last_entropy.unwrap_or_default() != proof.message_bytes {
+    if state.last_entropy.unwrap_or_default() != proof.message_bytes && !cfg.test_mode {
         return Err(ContractError::InvalidMessage {});
     }
 
     let key = &proof.signer;
-    check_key(&deps.as_ref(), &env, key, &cfg)?;
-
-    let mut key_info = WHITELISTED_KEYS.load(deps.storage, key.as_bytes())?;
-    if key_info.holder != info.sender {
-        return Err(ContractError::Unauthorized {});
+    if !cfg.test_mode {
+        check_key(&deps.as_ref(), &env, key, &cfg)?;
+        let mut key_info = WHITELISTED_KEYS.load(deps.storage, key.as_bytes())?;
+        if key_info.holder != info.sender {
+            return Err(ContractError::Unauthorized {});
+        }
+        key_info.refundable_amount =
+            (key_info.refundable_amount + cfg.refund_increment_amt).min(key_info.deposit_amount);
+        WHITELISTED_KEYS.save(deps.storage, key.as_bytes(), &key_info)?;
     }
 
-    let entropy = proof.verify().map_err(|_| ContractError::InvalidProof {})?;
+    let entropy = if !cfg.test_mode {
+        proof.verify().map_err(|_| ContractError::InvalidProof {})?
+    } else {
+        let mut message = proof.message_bytes;
+        message.resize(64, 0);
+        message
+            .try_into()
+            .map_err(|_| ContractError::InvalidProof {})?
+    };
 
     state.last_entropy = Some(entropy.to_vec());
     STATE.save(deps.storage, &state)?;
 
-    key_info.refundable_amount =
-        (key_info.refundable_amount + cfg.refund_increment_amt).min(key_info.deposit_amount);
-    WHITELISTED_KEYS.save(deps.storage, key.as_bytes(), &key_info)?;
-
-    let payout: Uint128 = requests.iter().map(|(_,req)| req.submitted_bounty_amount).sum();
+    let payout: Uint128 = requests
+        .iter()
+        .map(|(_, req)| req.submitted_bounty_amount)
+        .sum();
     let payout = payout * cfg.submitter_share;
     let mut submsgs = vec![];
 
@@ -282,11 +295,13 @@ pub fn submit_entropy(
 
         let mut hasher = Sha512::new();
         hasher.update(&cur_entropy);
-        cur_entropy = hasher.finalize().into();
+        if !cfg.test_mode {
+            cur_entropy = hasher.finalize().into();
+        }
 
         ENTROPY_REQUESTS.remove(deps.storage, id);
     }
-    
+
     let mut response = Response::new();
     if !payout.is_zero() {
         response = response.add_message(CosmosMsg::Bank(BankMsg::Send {
