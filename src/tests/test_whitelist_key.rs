@@ -6,7 +6,7 @@ use ecvrf_rs::PublicKey;
 use entropy_beacon_cosmos::provide::{KeyStatusQuery, WhitelistPublicKeyMsg};
 
 use crate::{
-    contract::{key_status_query, whitelist_key},
+    execute, query,
     tests::{default_instantiate, test_pk},
     ContractError,
 };
@@ -23,7 +23,7 @@ fn whitelists_correctly() {
         public_key: test_pk(),
     };
 
-    let res = whitelist_key(deps.as_mut(), env.clone(), info, msg);
+    let res = execute::whitelist_key(deps.as_mut(), env.clone(), info, msg);
 
     assert!(res.is_ok());
 
@@ -50,7 +50,7 @@ fn checks_invalid_keys() {
         public_key: PublicKey::from_bytes(&[0u8; 32]),
     };
 
-    let res = whitelist_key(deps.as_mut(), env, info, msg);
+    let res = execute::whitelist_key(deps.as_mut(), env, info, msg);
 
     assert_eq!(res.unwrap_err(), ContractError::InvalidPublicKey {});
 }
@@ -67,10 +67,11 @@ fn rejects_already_whitelisted_keys() {
         public_key: test_pk(),
     };
 
-    let res = whitelist_key(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+    let res =
+        execute::whitelist_key(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
     assert_eq!(res.attributes.len(), 3);
 
-    let res = whitelist_key(deps.as_mut(), env, info, msg);
+    let res = execute::whitelist_key(deps.as_mut(), env, info, msg);
 
     assert_eq!(res.unwrap_err(), ContractError::KeyAlreadyWhitelisted {});
 }
@@ -87,11 +88,11 @@ fn rejects_without_deposit() {
         public_key: test_pk(),
     };
 
-    let res = whitelist_key(deps.as_mut(), env.clone(), info, msg.clone());
+    let res = execute::whitelist_key(deps.as_mut(), env.clone(), info, msg.clone());
     assert_eq!(res.unwrap_err(), ContractError::InsufficientFunds {});
 
     let info = mock_info("executor", &[coin(1000, "uatom")]);
-    let res = whitelist_key(deps.as_mut(), env, info, msg);
+    let res = execute::whitelist_key(deps.as_mut(), env, info, msg);
     assert_eq!(res.unwrap_err(), ContractError::InsufficientFunds {});
 }
 
@@ -107,9 +108,9 @@ fn activates_after_period() {
         public_key: test_pk(),
     };
 
-    whitelist_key(deps.as_mut(), env.clone(), info, msg).unwrap();
+    execute::whitelist_key(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let status_res = key_status_query(
+    let status_res = query::key_status_query(
         deps.as_ref(),
         env.clone(),
         KeyStatusQuery {
@@ -123,7 +124,7 @@ fn activates_after_period() {
     assert_eq!(status_res.activation_height, env.block.height + 1);
 
     env.block.height += 1;
-    let status_res = key_status_query(
+    let status_res = query::key_status_query(
         deps.as_ref(),
         env.clone(),
         KeyStatusQuery {

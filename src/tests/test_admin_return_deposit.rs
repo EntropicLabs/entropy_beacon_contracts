@@ -7,11 +7,7 @@ use entropy_beacon_cosmos::provide::{
     AdminReturnDepositMsg, KeyStatusQuery, WhitelistPublicKeyMsg,
 };
 
-use crate::{
-    contract::{admin_return_deposit, key_status_query, whitelist_key},
-    state::WHITELISTED_KEYS,
-    ContractError,
-};
+use crate::{execute, query, state::WHITELISTED_KEYS, ContractError};
 
 use super::{default_instantiate, test_pk};
 
@@ -23,7 +19,7 @@ fn setup_contract(deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier, Empty>
     let msg = WhitelistPublicKeyMsg {
         public_key: test_pk(),
     };
-    whitelist_key(deps.as_mut(), env, info, msg).unwrap();
+    execute::whitelist_key(deps.as_mut(), env, info, msg).unwrap();
 }
 
 #[test]
@@ -35,7 +31,7 @@ fn unwhitelists_and_returns_deposit() {
     let info = mock_info("creator", &[]);
     let msg = AdminReturnDepositMsg { key: test_pk() };
 
-    let res = admin_return_deposit(deps.as_mut(), env.clone(), info, msg);
+    let res = execute::admin_return_deposit(deps.as_mut(), env.clone(), info, msg);
 
     assert!(res.is_ok());
 
@@ -52,7 +48,7 @@ fn unwhitelists_and_returns_deposit() {
         })
     );
 
-    let res = key_status_query(
+    let res = query::key_status_query(
         deps.as_ref(),
         env,
         KeyStatusQuery {
@@ -73,7 +69,7 @@ fn rejects_unauthorized() {
     let info = mock_info("not_creator", &[]);
     let msg = AdminReturnDepositMsg { key: test_pk() };
 
-    let res = admin_return_deposit(deps.as_mut(), env, info, msg);
+    let res = execute::admin_return_deposit(deps.as_mut(), env, info, msg);
 
     assert!(res.is_err());
     assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});

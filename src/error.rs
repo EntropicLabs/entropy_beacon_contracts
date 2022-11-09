@@ -6,6 +6,9 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error("Beacon contract interactions paused")]
+    Paused {},
+
     #[error("Unauthorized")]
     Unauthorized {},
 
@@ -36,6 +39,6 @@ pub enum ContractError {
     #[error("Invalid reply ID")]
     InvalidReplyId {},
 
-    #[error("No active requests")]
-    NoActiveRequests {},
+    #[error("No matching active request {request_id}")]
+    NoMatchingRequests { request_id: u128 },
 }

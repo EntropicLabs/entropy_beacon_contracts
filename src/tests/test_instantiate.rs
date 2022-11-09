@@ -2,13 +2,9 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
     Addr, Attribute, Decimal, Uint128,
 };
-use entropy_beacon_cosmos::provide::{BeaconConfigResponse, KeyStatusQuery};
+use entropy_beacon_cosmos::{provide::{BeaconConfigResponse, KeyStatusQuery}, msg::InstantiateMsg};
 
-use crate::{
-    contract::{beacon_config_query, instantiate, key_status_query},
-    msg::InstantiateMsg,
-    tests::default_instantiate,
-};
+use crate::{contract::instantiate, query, tests::default_instantiate};
 
 use super::test_pk;
 
@@ -32,7 +28,7 @@ fn instantiates_correctly() {
         res.attributes.get(1).unwrap()
     );
 
-    let res = beacon_config_query(deps.as_ref()).unwrap();
+    let res = query::beacon_config_query(deps.as_ref()).unwrap();
     assert_eq!(
         res,
         BeaconConfigResponse {
@@ -55,6 +51,9 @@ fn with_prewhitelisted_keys() {
         submitter_share: 80,
         native_denom: "uluna".to_string(),
         whitelisted_keys: vec![(Addr::unchecked("creator"), test_pk())],
+        belief_gas_price: Decimal::percent(15),
+        permissioned: false,
+        test_mode: false,
     };
     let env = mock_env();
     let info = mock_info("creator", vec![].as_slice());
@@ -62,7 +61,7 @@ fn with_prewhitelisted_keys() {
     // we can just call .unwrap() to assert this was a success
     instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let status_res = key_status_query(
+    let status_res = query::key_status_query(
         deps.as_ref(),
         env.clone(),
         KeyStatusQuery {

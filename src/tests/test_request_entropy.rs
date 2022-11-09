@@ -5,14 +5,11 @@ use cosmwasm_std::{
 };
 
 use entropy_beacon_cosmos::{
-    beacon::{calculate_gas_cost, RequestEntropyMsg},
-    provide::{ActiveRequestInfo, WhitelistPublicKeyMsg},
+    beacon::RequestEntropyMsg,
+    provide::{ActiveRequestInfo, ActiveRequestsQuery, WhitelistPublicKeyMsg},
 };
 
-use crate::{
-    contract::{active_requests_query, request_entropy, whitelist_key},
-    ContractError,
-};
+use crate::{execute, query, ContractError};
 
 use super::{default_instantiate, test_pk};
 
@@ -24,7 +21,7 @@ fn setup_contract(deps: &mut OwnedDeps<MockStorage, MockApi, MockQuerier, Empty>
     let msg = WhitelistPublicKeyMsg {
         public_key: test_pk(),
     };
-    whitelist_key(deps.as_mut(), env.clone(), info, msg).unwrap();
+    execute::whitelist_key(deps.as_mut(), env.clone(), info, msg).unwrap();
     env.block.height += 1;
 }
 
@@ -42,14 +39,19 @@ fn requests_correctly() {
         callback_msg: to_binary("callback_msg".as_bytes()).unwrap(),
     };
 
-    let res = request_entropy(deps.as_mut(), env.clone(), info, request_msg);
+    let res = execute::request_entropy(deps.as_mut(), env.clone(), info, request_msg);
     assert!(res.is_ok());
 
-    let active_query_res = active_requests_query(deps.as_ref()).unwrap();
+    let active_query_msg = ActiveRequestsQuery {
+        start_after: None,
+        limit: None,
+    };
+    let active_query_res = query::active_requests_query(deps.as_ref(), active_query_msg).unwrap();
     assert_eq!(active_query_res.requests.len(), 1);
     assert_eq!(
         active_query_res.requests[0],
         ActiveRequestInfo {
+            id: 0,
             callback_gas_limit: 1000,
             callback_address: Addr::unchecked("callback_address".to_string()),
             submitter: Addr::unchecked("requester".to_string()),
@@ -65,10 +67,7 @@ fn rejects_insufficient_funds() {
     let mut env = mock_env();
     setup_contract(&mut deps, &mut env);
 
-    let info = mock_info(
-        "requester",
-        &[coin(calculate_gas_cost(1000).u128(), "uluna")],
-    );
+    let info = mock_info("requester", &[coin(150u128, "uluna")]);
 
     let request_msg = RequestEntropyMsg {
         callback_gas_limit: 1000,
@@ -76,6 +75,6 @@ fn rejects_insufficient_funds() {
         callback_msg: to_binary("callback_msg".as_bytes()).unwrap(),
     };
 
-    let res = request_entropy(deps.as_mut(), env.clone(), info, request_msg);
+    let res = execute::request_entropy(deps.as_mut(), env.clone(), info, request_msg);
     assert_eq!(res.unwrap_err(), ContractError::InsufficientFunds {});
 }
