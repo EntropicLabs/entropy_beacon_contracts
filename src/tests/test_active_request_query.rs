@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     coin,
-    testing::{mock_dependencies, mock_env, mock_info},
+    testing::{mock_dependencies, mock_env, mock_info}, Uint128,
 };
 use ecvrf_rs::Proof;
 use entropy_beacon_cosmos::provide::{ActiveRequestsQuery, SubmitEntropyMsg};
@@ -33,12 +33,12 @@ fn pagination_works() {
     let response = response.unwrap();
     assert_eq!(response.requests.len(), 10);
     assert_eq!(
-        response.requests.iter().map(|r| r.id).collect::<Vec<_>>(),
+        response.requests.iter().map(|r| r.id.u128()).collect::<Vec<_>>(),
         (0..10).collect::<Vec<_>>()
     );
 
     let active_query_msg = ActiveRequestsQuery {
-        start_after: Some(9),
+        start_after: Some(Uint128::from(9u128)),
         limit: None, // Default 10
     };
 
@@ -48,12 +48,12 @@ fn pagination_works() {
     assert_eq!(response.requests.len(), 10);
 
     assert_eq!(
-        response.requests.iter().map(|r| r.id).collect::<Vec<_>>(),
+        response.requests.iter().map(|r| r.id.u128()).collect::<Vec<_>>(),
         (10..20).collect::<Vec<_>>()
     );
 
     let active_query_msg = ActiveRequestsQuery {
-        start_after: Some(19),
+        start_after: Some(Uint128::from(19u128)),
         limit: None, // Default 10
     };
 
@@ -63,7 +63,7 @@ fn pagination_works() {
     assert_eq!(response.requests.len(), 10);
 
     assert_eq!(
-        response.requests.iter().map(|r| r.id).collect::<Vec<_>>(),
+        response.requests.iter().map(|r| r.id.u128()).collect::<Vec<_>>(),
         (20..30).collect::<Vec<_>>()
     );
 }
@@ -87,12 +87,12 @@ fn pagination_works_when_exceeding() {
     let response = response.unwrap();
     assert_eq!(response.requests.len(), 10);
     assert_eq!(
-        response.requests.iter().map(|r| r.id).collect::<Vec<_>>(),
+        response.requests.iter().map(|r| r.id.u128()).collect::<Vec<_>>(),
         (0..10).collect::<Vec<_>>()
     );
 
     let active_query_msg = ActiveRequestsQuery {
-        start_after: Some(9),
+        start_after: Some(Uint128::from(9u128)),
         limit: None, // Default 10
     };
 
@@ -102,7 +102,7 @@ fn pagination_works_when_exceeding() {
     assert_eq!(response.requests.len(), 0);
 
     let active_query_msg = ActiveRequestsQuery {
-        start_after: Some(999),
+        start_after: Some(Uint128::from(999u128)),
         limit: None, // Default 10
     };
 
@@ -131,7 +131,7 @@ fn max_pagination_limit_obeyed() {
     let response = response.unwrap();
     assert_eq!(response.requests.len(), 30);
     assert_eq!(
-        response.requests.iter().map(|r| r.id).collect::<Vec<_>>(),
+        response.requests.iter().map(|r| r.id.u128()).collect::<Vec<_>>(),
         (0..30).collect::<Vec<_>>()
     );
 }
@@ -152,7 +152,7 @@ fn works_with_removed_elements() {
 
     let msg = SubmitEntropyMsg {
         proof,
-        request_ids: (0..30).collect(),
+        request_ids: (0u128..30).map(Uint128::from).collect(),
     };
     let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert!(res.is_ok());
@@ -166,12 +166,12 @@ fn works_with_removed_elements() {
     let response = response.unwrap();
     assert_eq!(response.requests.len(), 10);
     assert_eq!(
-        response.requests.iter().map(|r| r.id).collect::<Vec<_>>(),
+        response.requests.iter().map(|r| r.id.u128()).collect::<Vec<_>>(),
         (30..40).collect::<Vec<_>>()
     );
 
     let active_query_msg = ActiveRequestsQuery {
-        start_after: Some(10),
+        start_after: Some(Uint128::from(10u128)),
         limit: None,
     };
     let response = active_requests_query(deps.as_ref(), active_query_msg);
@@ -179,12 +179,12 @@ fn works_with_removed_elements() {
     let response = response.unwrap();
     assert_eq!(response.requests.len(), 10);
     assert_eq!(
-        response.requests.iter().map(|r| r.id).collect::<Vec<_>>(),
+        response.requests.iter().map(|r| r.id.u128()).collect::<Vec<_>>(),
         (30..40).collect::<Vec<_>>()
     );
 
     let active_query_msg = ActiveRequestsQuery {
-        start_after: Some(39),
+        start_after: Some(Uint128::from(39u128)),
         limit: None,
     };
     let response = active_requests_query(deps.as_ref(), active_query_msg);
@@ -192,7 +192,7 @@ fn works_with_removed_elements() {
     let response = response.unwrap();
     assert_eq!(response.requests.len(), 10);
     assert_eq!(
-        response.requests.iter().map(|r| r.id).collect::<Vec<_>>(),
+        response.requests.iter().map(|r| r.id.u128()).collect::<Vec<_>>(),
         (40..50).collect::<Vec<_>>()
     );
 }

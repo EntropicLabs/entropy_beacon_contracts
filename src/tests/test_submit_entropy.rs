@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     coin,
     testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    to_binary, Addr, Empty, Env, OwnedDeps,
+    to_binary, Addr, Empty, Env, OwnedDeps, Uint128,
 };
 
 use ecvrf_rs::{encode_hex, Proof, SecretKey};
@@ -58,7 +58,7 @@ fn submits_correctly() {
 
     let msg = SubmitEntropyMsg {
         proof: proof.clone(),
-        request_ids: vec![0u128],
+        request_ids: vec![Uint128::zero()],
     };
     let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert!(res.is_ok());
@@ -79,7 +79,7 @@ fn rejects_wrong_message() {
 
     let msg = SubmitEntropyMsg {
         proof,
-        request_ids: vec![0u128],
+        request_ids: vec![Uint128::zero()],
     };
     let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(res.unwrap_err(), ContractError::InvalidMessage {});
@@ -98,7 +98,7 @@ fn rejects_inactive_keys() {
 
     let msg = SubmitEntropyMsg {
         proof,
-        request_ids: vec![0u128],
+        request_ids: vec![Uint128::zero()],
     };
     let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(
@@ -122,7 +122,7 @@ fn rejects_invalid_keys() {
 
     let msg = SubmitEntropyMsg {
         proof,
-        request_ids: vec![0u128],
+        request_ids: vec![Uint128::zero()],
     };
     let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(res.unwrap_err(), ContractError::KeyNotWhitelisted {});
@@ -140,7 +140,7 @@ fn rejects_unauthorized_sender() {
 
     let msg = SubmitEntropyMsg {
         proof,
-        request_ids: vec![0u128],
+        request_ids: vec![Uint128::zero()],
     };
     let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
@@ -162,7 +162,7 @@ fn rejects_invalid_proofs() {
 
     let msg = SubmitEntropyMsg {
         proof,
-        request_ids: vec![0u128],
+        request_ids: vec![Uint128::zero()],
     };
     let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(res.unwrap_err(), ContractError::InvalidProof {});
@@ -181,7 +181,7 @@ fn submit_all_multiple_request_ids() {
 
     let msg = SubmitEntropyMsg {
         proof,
-        request_ids: vec![0u128, 1u128],
+        request_ids: vec![Uint128::zero(), Uint128::from(1u128)],
     };
     let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert!(res.is_ok());
@@ -225,7 +225,7 @@ fn submit_one_multiple_request_ids() {
 
     let msg = SubmitEntropyMsg {
         proof,
-        request_ids: vec![1u128],
+        request_ids: vec![Uint128::from(1u128)],
     };
     let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert!(res.is_ok());
@@ -247,7 +247,7 @@ fn errors_on_invalid_request_id() {
 
     let msg = SubmitEntropyMsg {
         proof,
-        request_ids: vec![2u128],
+        request_ids: vec![Uint128::from(2u128)],
     };
     let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
     assert_eq!(

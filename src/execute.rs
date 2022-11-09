@@ -221,16 +221,17 @@ pub fn submit_entropy(
     let requests = if !request_ids.is_empty() {
         request_ids
             .iter()
+            .map(|id| id.u128())
             .map(|id| {
                 let req = ENTROPY_REQUESTS
-                    .load(deps.storage, *id)
+                    .load(deps.storage, id)
                     .map_err(|e| match e {
                         StdError::NotFound { .. } => {
-                            ContractError::NoMatchingRequests { request_id: *id }
+                            ContractError::NoMatchingRequests { request_id: id }
                         }
                         _ => ContractError::Std(e),
                     })?;
-                Ok((*id, req))
+                Ok((id, req))
             })
             .collect::<Result<Vec<_>, ContractError>>()?
     } else {

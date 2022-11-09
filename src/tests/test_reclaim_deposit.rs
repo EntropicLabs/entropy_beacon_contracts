@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     coin, coins,
     testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-    BankMsg, CosmosMsg, Empty, Env, OwnedDeps,
+    BankMsg, CosmosMsg, Empty, Env, OwnedDeps, Uint128,
 };
 use ecvrf_rs::{Proof, PublicKey};
 use entropy_beacon_cosmos::provide::{
@@ -74,7 +74,7 @@ fn returns_deposit() {
         info.clone(),
         SubmitEntropyMsg {
             proof,
-            request_ids: vec![0u128],
+            request_ids: vec![Uint128::zero()],
         },
     )
     .unwrap();

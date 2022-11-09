@@ -60,7 +60,7 @@ pub struct EntropyRequest {
 impl EntropyRequest {
     pub fn into_info(self) -> ActiveRequestInfo {
         ActiveRequestInfo {
-            id: self.id,
+            id: Uint128::from(self.id),
             callback_gas_limit: self.callback_gas_limit,
             callback_address: self.callback_address,
             submitter: self.submitter,

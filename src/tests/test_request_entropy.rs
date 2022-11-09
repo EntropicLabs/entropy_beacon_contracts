@@ -51,7 +51,7 @@ fn requests_correctly() {
     assert_eq!(
         active_query_res.requests[0],
         ActiveRequestInfo {
-            id: 0,
+            id: Uint128::zero(),
             callback_gas_limit: 1000,
             callback_address: Addr::unchecked("callback_address".to_string()),
             submitter: Addr::unchecked("requester".to_string()),

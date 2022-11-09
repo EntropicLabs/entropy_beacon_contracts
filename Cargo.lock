@@ -384,9 +384,9 @@ dependencies = [
 
 [[package]]
 name = "entropy_beacon_cosmos"
-version = "2.0.0"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19835d80eedb75ed339bce0575073adeeb91960028893e47ef9430ce0e49eb43"
+checksum = "b878c2608fb7fd8fbe15f70e9fbbe1febf0f0d7f24cce1bd839553dcb7c8b4d7"
 dependencies = [
  "cosmwasm-std",
  "ecvrf-rs",
