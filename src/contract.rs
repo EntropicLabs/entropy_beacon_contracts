@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
-    SubMsgResult, Uint128,
+    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError,
+    StdResult, SubMsgResult, Uint128,
 };
 use cw2::set_contract_version;
 use entropy_beacon_cosmos::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -15,7 +15,7 @@ use crate::{
 use crate::{msg::SUBMSG_REPLY_ID, state::KeyInfo};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:entropy";
+const CONTRACT_NAME: &str = "entropiclabs/beacon";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -120,6 +120,42 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    let version = cw2::get_contract_version(deps.storage)?;
+
+    if !version.version.starts_with('1') && !version.version.starts_with('0') {
+        return Err(ContractError::Std(StdError::generic_err(
+            format!("Invalid version for migration: {}", version.version),
+        )));
+    }
+
+    let v1_state = crate::state::v1::STATE.load(deps.storage)?;
+    let v1_config = crate::state::v1::CONFIG.load(deps.storage)?;
+
+    let state = State {
+        last_entropy: v1_state.last_entropy,
+        belief_gas_price: msg.belief_gas_price,
+        cur_request_id: 0u128,
+    };
+
+    STATE.save(deps.storage, &state)?;
+
+    let config = Config {
+        owner: v1_config.owner,
+        whitelist_deposit_amt: v1_config.whitelist_deposit_amt,
+        refund_increment_amt: v1_config.refund_increment_amt,
+        key_activation_delay: v1_config.key_activation_delay,
+        protocol_fee: v1_config.protocol_fee,
+        submitter_share: v1_config.submitter_share,
+        native_denom: v1_config.native_denom,
+        paused: false,
+        permissioned: true,
+        test_mode: false,
+    };
+
+    CONFIG.save(deps.storage, &config)?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     Ok(Response::new().add_attribute("action", "migrate"))
 }

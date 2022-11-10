@@ -84,3 +84,34 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const WHITELISTED_KEYS: Map<&[u8], KeyInfo> = Map::new("whitelisted_keys");
 
 pub const ENTROPY_REQUESTS: Map<u128, EntropyRequest> = Map::new("entropy_requests");
+
+pub mod v1 {
+    use cosmwasm_std::{Decimal, Addr, Uint128};
+    use cw_storage_plus::Item;
+    use schemars::JsonSchema;
+    use serde::{Deserialize, Serialize};
+    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+    pub struct State {
+        ///The last submitted entropy.
+        pub last_entropy: Option<Vec<u8>>,
+    }
+    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+    pub struct Config {
+        pub owner: Addr,
+        ///The amount of tokens that must be deposited to whitelist a new public key.
+        pub whitelist_deposit_amt: Uint128,
+        ///The amount of the deposit that unlocks with each submission of entropy.
+        pub refund_increment_amt: Uint128,
+        ///The time, in blocks, before a whitelisted public key can be used to submit entropy.
+        pub key_activation_delay: u64,
+        ///The fee that the protocol contract charges on top of the requested gas fees.
+        pub protocol_fee: u64,
+        ///The share of the protocol fee that is distributed to the wallet submitting entropy.
+        pub submitter_share: Decimal,
+        ///The native currency of the target chain.
+        pub native_denom: String,
+    }
+    
+    pub const STATE: Item<State> = Item::new("state");
+    pub const CONFIG: Item<Config> = Item::new("config");
+}
