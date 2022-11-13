@@ -82,13 +82,24 @@ pub fn update_config(
         return Err(ContractError::Unauthorized {});
     }
 
-    cfg.whitelist_deposit_amt = data.whitelist_deposit_amt;
-    cfg.key_activation_delay = data.key_activation_delay;
-    cfg.refund_increment_amt = data.refund_increment_amt;
-    cfg.protocol_fee = data.protocol_fee;
-    cfg.submitter_share = Decimal::percent(data.submitter_share);
-    cfg.permissioned = data.permissioned;
-    cfg.paused = data.paused;
+    cfg.whitelist_deposit_amt = data
+        .whitelist_deposit_amt
+        .unwrap_or(cfg.whitelist_deposit_amt);
+    cfg.refund_increment_amt = data
+        .refund_increment_amt
+        .unwrap_or(cfg.refund_increment_amt);
+    cfg.key_activation_delay = data
+        .key_activation_delay
+        .unwrap_or(cfg.key_activation_delay);
+    cfg.protocol_fee = data.protocol_fee.unwrap_or(cfg.protocol_fee);
+    cfg.submitter_share = data
+        .submitter_share
+        .map(Decimal::percent)
+        .unwrap_or(cfg.submitter_share);
+    cfg.native_denom = data.native_denom.unwrap_or(cfg.native_denom);
+    cfg.paused = data.paused.unwrap_or(cfg.paused);
+    cfg.permissioned = data.permissioned.unwrap_or(cfg.permissioned);
+    cfg.subsidize_callbacks = data.subsidize_callbacks.unwrap_or(cfg.subsidize_callbacks);
 
     CONFIG.save(deps.storage, &cfg)?;
 

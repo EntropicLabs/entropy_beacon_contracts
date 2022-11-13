@@ -41,6 +41,7 @@ pub fn default_instantiate(deps: DepsMut) -> Response {
         belief_gas_price: Decimal::percent(15),
         permissioned: false,
         test_mode: false,
+        subsidize_callbacks: false,
     };
     let env = mock_env();
     let info = mock_info("creator", vec![].as_slice());

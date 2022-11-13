@@ -1,4 +1,4 @@
-use entropy_beacon_cosmos::provide::ActiveRequestInfo;
+use entropy_beacon_cosmos::{provide::ActiveRequestInfo, BeaconConfigResponse};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +35,25 @@ pub struct Config {
     pub permissioned: bool,
     ///Whether or not the contract is in test mode.
     pub test_mode: bool,
+    ///Whether or not callback subsidization is enabled.
+    pub subsidize_callbacks: bool,
+}
+
+impl From<Config> for BeaconConfigResponse {
+    fn from(val: Config) -> Self {
+        BeaconConfigResponse {
+            whitelist_deposit_amt: val.whitelist_deposit_amt,
+            refund_increment_amt: val.refund_increment_amt,
+            key_activation_delay: val.key_activation_delay,
+            protocol_fee: val.protocol_fee,
+            submitter_share: val.submitter_share,
+            native_denom: val.native_denom,
+            paused: val.paused,
+            permissioned: val.permissioned,
+            test_mode: val.test_mode,
+            subsidize_callbacks: val.subsidize_callbacks,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -85,8 +104,8 @@ pub const WHITELISTED_KEYS: Map<&[u8], KeyInfo> = Map::new("whitelisted_keys");
 
 pub const ENTROPY_REQUESTS: Map<u128, EntropyRequest> = Map::new("entropy_requests");
 
-pub mod v1 {
-    use cosmwasm_std::{Decimal, Addr, Uint128};
+pub mod v2_0_0 {
+    use cosmwasm_std::{Addr, Decimal, Uint128};
     use cw_storage_plus::Item;
     use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
@@ -94,6 +113,10 @@ pub mod v1 {
     pub struct State {
         ///The last submitted entropy.
         pub last_entropy: Option<Vec<u8>>,
+        ///Currently believed gas price.
+        pub belief_gas_price: Decimal,
+        ///Current request id counter.
+        pub cur_request_id: u128,
     }
     #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
     pub struct Config {
@@ -110,8 +133,14 @@ pub mod v1 {
         pub submitter_share: Decimal,
         ///The native currency of the target chain.
         pub native_denom: String,
+        ///Whether or not the contract is paused.
+        pub paused: bool,
+        ///Whether or not the contract is in permissioned mode.
+        pub permissioned: bool,
+        ///Whether or not the contract is in test mode.
+        pub test_mode: bool,
     }
-    
+
     pub const STATE: Item<State> = Item::new("state");
     pub const CONFIG: Item<Config> = Item::new("config");
 }

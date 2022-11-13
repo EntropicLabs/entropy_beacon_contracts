@@ -2,7 +2,10 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
     Addr, Attribute, Decimal, Uint128,
 };
-use entropy_beacon_cosmos::{provide::{BeaconConfigResponse, KeyStatusQuery}, msg::InstantiateMsg};
+use entropy_beacon_cosmos::{
+    msg::InstantiateMsg,
+    provide::{BeaconConfigResponse, KeyStatusQuery},
+};
 
 use crate::{contract::instantiate, query, tests::default_instantiate};
 
@@ -36,6 +39,12 @@ fn instantiates_correctly() {
             protocol_fee: 100,
             submitter_share: Decimal::percent(80),
             key_activation_delay: 1,
+            refund_increment_amt: Uint128::from(1000u128),
+            native_denom: "uluna".to_string(),
+            paused: false,
+            permissioned: false,
+            test_mode: false,
+            subsidize_callbacks: false,
         }
     );
 }
@@ -54,6 +63,7 @@ fn with_prewhitelisted_keys() {
         belief_gas_price: Decimal::percent(15),
         permissioned: false,
         test_mode: false,
+        subsidize_callbacks: false,
     };
     let env = mock_env();
     let info = mock_info("creator", vec![].as_slice());

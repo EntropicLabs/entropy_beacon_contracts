@@ -82,13 +82,7 @@ pub fn active_requests_query(
 }
 
 pub fn beacon_config_query(deps: Deps) -> StdResult<BeaconConfigResponse> {
-    let cfg = CONFIG.load(deps.storage)?;
-    Ok(BeaconConfigResponse {
-        whitelist_deposit_amt: cfg.whitelist_deposit_amt,
-        key_activation_delay: cfg.key_activation_delay,
-        protocol_fee: cfg.protocol_fee,
-        submitter_share: cfg.submitter_share,
-    })
+    Ok(CONFIG.load(deps.storage)?.into())
 }
 
 pub fn calculate_fee_query(deps: Deps, data: CalculateFeeQuery) -> StdResult<CalculateFeeResponse> {
@@ -96,7 +90,12 @@ pub fn calculate_fee_query(deps: Deps, data: CalculateFeeQuery) -> StdResult<Cal
     let state = STATE.load(deps.storage)?;
     let gas_cost = Uint128::from(data.callback_gas_limit) * state.belief_gas_price;
     let protocol_fee = Uint128::from(cfg.protocol_fee);
-    let total_fee = gas_cost + protocol_fee;
+    let total_fee = protocol_fee
+        + if cfg.subsidize_callbacks {
+            Uint128::zero()
+        } else {
+            gas_cost
+        };
     if total_fee > u64::MAX.into() {
         return Err(StdError::generic_err("Fee overflow"));
     }

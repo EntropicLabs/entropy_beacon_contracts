@@ -44,6 +44,7 @@ pub fn instantiate(
         paused: false,
         permissioned: msg.permissioned,
         test_mode: msg.test_mode,
+        subsidize_callbacks: msg.subsidize_callbacks,
     };
 
     STATE.save(deps.storage, &state)?;
@@ -123,34 +124,26 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let version = cw2::get_contract_version(deps.storage)?;
 
-    if !version.version.starts_with('1') && !version.version.starts_with('0') {
+    if version.version != "2.0.0" {
         return Err(ContractError::Std(StdError::generic_err(
             format!("Invalid version for migration: {}", version.version),
         )));
     }
 
-    let v1_state = crate::state::v1::STATE.load(deps.storage)?;
-    let v1_config = crate::state::v1::CONFIG.load(deps.storage)?;
-
-    let state = State {
-        last_entropy: v1_state.last_entropy,
-        belief_gas_price: msg.belief_gas_price,
-        cur_request_id: 0u128,
-    };
-
-    STATE.save(deps.storage, &state)?;
+    let v2_0_0_config = crate::state::v2_0_0::CONFIG.load(deps.storage)?;
 
     let config = Config {
-        owner: v1_config.owner,
-        whitelist_deposit_amt: v1_config.whitelist_deposit_amt,
-        refund_increment_amt: v1_config.refund_increment_amt,
-        key_activation_delay: v1_config.key_activation_delay,
-        protocol_fee: v1_config.protocol_fee,
-        submitter_share: v1_config.submitter_share,
-        native_denom: v1_config.native_denom,
-        paused: false,
-        permissioned: true,
-        test_mode: false,
+        owner: v2_0_0_config.owner,
+        whitelist_deposit_amt: v2_0_0_config.whitelist_deposit_amt,
+        refund_increment_amt: v2_0_0_config.refund_increment_amt,
+        key_activation_delay: v2_0_0_config.key_activation_delay,
+        protocol_fee: v2_0_0_config.protocol_fee,
+        submitter_share: v2_0_0_config.submitter_share,
+        native_denom: v2_0_0_config.native_denom,
+        paused: v2_0_0_config.paused,
+        permissioned: v2_0_0_config.permissioned,
+        test_mode: v2_0_0_config.test_mode,
+        subsidize_callbacks: msg.subsidize_callbacks,
     };
 
     CONFIG.save(deps.storage, &config)?;
