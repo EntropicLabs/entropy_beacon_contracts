@@ -255,3 +255,28 @@ fn errors_on_invalid_request_id() {
         ContractError::NoMatchingRequests { request_id: 2u128 }
     );
 }
+
+#[test]
+fn max_512_requests_per_tx() {
+    let mut deps = mock_dependencies();
+    let mut env = mock_env();
+    setup_contract(&mut deps, &mut env);
+
+    for _ in 0..1024 {
+        request_entropy(&mut deps, &mut env);
+    }
+
+    let info = mock_info("submitter", &[]);
+    let last_entropy = "".to_string();
+    let proof = Proof::new(&test_sk(), last_entropy).unwrap();
+
+    let msg = SubmitEntropyMsg {
+        proof,
+        request_ids: vec![],
+    };
+    let res = execute::submit_entropy(deps.as_mut(), env.clone(), info, msg);
+    assert!(res.is_ok());
+
+    let res = res.unwrap();
+    assert_eq!(res.messages.len(), 513);
+}

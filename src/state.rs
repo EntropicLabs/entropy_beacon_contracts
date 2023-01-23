@@ -1,11 +1,10 @@
+use cosmwasm_schema::cw_serde;
 use entropy_beacon_cosmos::{provide::ActiveRequestInfo, BeaconConfigResponse};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 use cw_storage_plus::{Item, Map};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct State {
     ///The last submitted entropy.
     pub last_entropy: Option<Vec<u8>>,
@@ -14,7 +13,7 @@ pub struct State {
     ///Current request id counter.
     pub cur_request_id: u128,
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Config {
     pub owner: Addr,
     ///The amount of tokens that must be deposited to whitelist a new public key.
@@ -56,8 +55,7 @@ impl From<Config> for BeaconConfigResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct EntropyRequest {
     ///The id of the request.
     pub id: u128,
@@ -89,8 +87,7 @@ impl EntropyRequest {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct KeyInfo {
     pub holder: Addr,
     pub deposit_amount: Uint128,
@@ -103,44 +100,3 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const WHITELISTED_KEYS: Map<&[u8], KeyInfo> = Map::new("whitelisted_keys");
 
 pub const ENTROPY_REQUESTS: Map<u128, EntropyRequest> = Map::new("entropy_requests");
-
-pub mod v2_0_0 {
-    use cosmwasm_std::{Addr, Decimal, Uint128};
-    use cw_storage_plus::Item;
-    use schemars::JsonSchema;
-    use serde::{Deserialize, Serialize};
-    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-    pub struct State {
-        ///The last submitted entropy.
-        pub last_entropy: Option<Vec<u8>>,
-        ///Currently believed gas price.
-        pub belief_gas_price: Decimal,
-        ///Current request id counter.
-        pub cur_request_id: u128,
-    }
-    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-    pub struct Config {
-        pub owner: Addr,
-        ///The amount of tokens that must be deposited to whitelist a new public key.
-        pub whitelist_deposit_amt: Uint128,
-        ///The amount of the deposit that unlocks with each submission of entropy.
-        pub refund_increment_amt: Uint128,
-        ///The time, in blocks, before a whitelisted public key can be used to submit entropy.
-        pub key_activation_delay: u64,
-        ///The fee that the protocol contract charges on top of the requested gas fees.
-        pub protocol_fee: u64,
-        ///The share of the protocol fee that is distributed to the wallet submitting entropy.
-        pub submitter_share: Decimal,
-        ///The native currency of the target chain.
-        pub native_denom: String,
-        ///Whether or not the contract is paused.
-        pub paused: bool,
-        ///Whether or not the contract is in permissioned mode.
-        pub permissioned: bool,
-        ///Whether or not the contract is in test mode.
-        pub test_mode: bool,
-    }
-
-    pub const STATE: Item<State> = Item::new("state");
-    pub const CONFIG: Item<Config> = Item::new("config");
-}

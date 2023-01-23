@@ -229,6 +229,7 @@ pub fn submit_entropy(
     let proof = data.proof;
     let request_ids = data.request_ids;
 
+    // Limited to 512 requests per transaction because of mask-hash method working on 512 bits.
     let requests = if !request_ids.is_empty() {
         request_ids
             .iter()
@@ -253,7 +254,7 @@ pub fn submit_entropy(
                 Ok((id, req))
             })
             .collect::<Result<Vec<_>, ContractError>>()?
-    };
+    }.into_iter().take(512).collect::<Vec<_>>();
 
     if state.last_entropy.unwrap_or_default() != proof.message_bytes && !cfg.test_mode {
         return Err(ContractError::InvalidMessage {});
@@ -291,8 +292,17 @@ pub fn submit_entropy(
     let payout = payout * cfg.submitter_share;
     let mut submsgs = vec![];
 
-    let mut cur_entropy = entropy;
-    for (id, req) in requests {
+    // Flip one bit at a time and hash it to get the entropy for each request.
+    for (idx, (id, req)) in requests.into_iter().enumerate() {
+        let mut cur_entropy = entropy;
+        let mut hasher = Sha512::new();
+
+        if !cfg.test_mode {
+            cur_entropy[idx / 8] ^= 1 << (idx % 8);
+            hasher.update(&cur_entropy);
+            cur_entropy = hasher.finalize().into();
+        }
+        
         submsgs.push(SubMsg {
             id: SUBMSG_REPLY_ID,
             msg: EntropyCallbackMsg {
@@ -304,12 +314,6 @@ pub fn submit_entropy(
             gas_limit: Some(req.callback_gas_limit),
             reply_on: ReplyOn::Always,
         });
-
-        let mut hasher = Sha512::new();
-        hasher.update(&cur_entropy);
-        if !cfg.test_mode {
-            cur_entropy = hasher.finalize().into();
-        }
 
         ENTROPY_REQUESTS.remove(deps.storage, id);
     }

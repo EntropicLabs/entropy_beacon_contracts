@@ -1,8 +1,8 @@
 [package]
 name = "beacon"
-version = "2.1.0"
+version = "2.1.1"
 authors = ["Amit Prasad <mail@amitprasad.dev>"]
-edition = "2018"
+edition = "2021"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -39,18 +39,18 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 """
 
 [dependencies]
-cosmwasm-std = "1.0.0"
-cosmwasm-storage = "1.0.0"
-cw-storage-plus = "0.13.2"
-cw2 = "0.13.2"
-schemars = "0.8.8"
-serde = { version = "1.0.137", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.31" }
-entropy_beacon_cosmos = { version = "2.0.4", features = ["ecvrf"] }
+cosmwasm-std = "1.1.6"
+cosmwasm-schema = "1.1.6"
+cw-storage-plus = "0.16.0"
+cw2 = "0.16.0"
+schemars = "0.8.11"
+serde = { version = "1.0.147", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.37" }
+#entropy_beacon_cosmos = { version = "2.0.4", features = ["ecvrf"] }
+entropy_beacon_cosmos = { path = "../../packages/entropy_beacon_cosmos", features = ["ecvrf"] }
 ecvrf-rs = "1.0"
-sha2 = "0.10.2"
+sha2 = "0.10.6"
 
 [dev-dependencies]
-cosmwasm-schema = "1.0.0"
-cw-multi-test = "0.13.2"
+cw-multi-test = "0.16.0"
 hex = "0.4.3"

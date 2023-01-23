@@ -121,32 +121,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let version = cw2::get_contract_version(deps.storage)?;
 
-    if version.version != "2.0.0" {
-        return Err(ContractError::Std(StdError::generic_err(
-            format!("Invalid version for migration: {}", version.version),
-        )));
+    if version.version != "2.1.0" {
+        return Err(ContractError::Std(StdError::generic_err(format!(
+            "Invalid version for migration: {}",
+            version.version
+        ))));
     }
-
-    let v2_0_0_config = crate::state::v2_0_0::CONFIG.load(deps.storage)?;
-
-    let config = Config {
-        owner: v2_0_0_config.owner,
-        whitelist_deposit_amt: v2_0_0_config.whitelist_deposit_amt,
-        refund_increment_amt: v2_0_0_config.refund_increment_amt,
-        key_activation_delay: v2_0_0_config.key_activation_delay,
-        protocol_fee: v2_0_0_config.protocol_fee,
-        submitter_share: v2_0_0_config.submitter_share,
-        native_denom: v2_0_0_config.native_denom,
-        paused: v2_0_0_config.paused,
-        permissioned: v2_0_0_config.permissioned,
-        test_mode: v2_0_0_config.test_mode,
-        subsidize_callbacks: msg.subsidize_callbacks,
-    };
-
-    CONFIG.save(deps.storage, &config)?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
